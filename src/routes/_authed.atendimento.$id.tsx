@@ -4,14 +4,33 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Sparkles, FileDown, FileText, Trash2, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  FileDown,
+  FileText,
+  Loader2,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { getProcess } from "@/lib/processes";
-import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
+import {
+  extractAttendanceData,
+  generateDocument,
+  getSignedUrl,
+} from "@/lib/attendances.functions";
+import { isTemplateApplicable } from "@/lib/official-templates";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
   component: AttendanceDetail,
@@ -36,9 +55,9 @@ function AttendanceDetail() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: (q) => {
-      const s = (q.state.data as any)?.status;
-      return s === "extracting" ? 2000 : false;
+    refetchInterval: (query) => {
+      const status = (query.state.data as any)?.status;
+      return status === "extracting" ? 2000 : false;
     },
   });
 
@@ -55,12 +74,12 @@ function AttendanceDetail() {
   });
 
   const { data: templates } = useQuery({
-    queryKey: ["templates", att?.process],
+    queryKey: ["templates", att?.process, att?.subprocess],
     enabled: !!att,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_templates")
-        .select("id, name, process, placeholders")
+        .select("id, name, process, placeholders, storage_path")
         .or(`process.eq.${att!.process},process.is.null`)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -90,13 +109,28 @@ function AttendanceDetail() {
     if (att?.extracted_data) setFields(att.extracted_data as Record<string, string>);
   }, [att?.extracted_data]);
 
-  // union of placeholders from templates for this process
+  const applicableTemplates = useMemo(() => {
+    if (!att) return [];
+    return (templates ?? []).filter((template) =>
+      isTemplateApplicable(template, {
+        process: att.process,
+        subprocess: att.subprocess,
+        subprocessDetails: (att.subprocess_details as Record<string, unknown>) ?? {},
+        extractedData: (att.extracted_data as Record<string, unknown>) ?? {},
+      }),
+    );
+  }, [att, templates]);
+
   const allFields = useMemo(() => {
-    const s = new Set<string>();
-    for (const k of Object.keys(fields)) s.add(k);
-    for (const t of templates ?? []) for (const p of (t.placeholders as string[]) ?? []) s.add(p);
-    return Array.from(s).sort();
-  }, [fields, templates]);
+    const fieldsSet = new Set<string>();
+    for (const key of Object.keys(fields)) fieldsSet.add(key);
+    for (const template of applicableTemplates) {
+      for (const placeholder of (template.placeholders as string[]) ?? []) {
+        fieldsSet.add(placeholder);
+      }
+    }
+    return Array.from(fieldsSet).sort();
+  }, [fields, applicableTemplates]);
 
   async function triggerExtract() {
     setExtracting(true);
@@ -104,16 +138,19 @@ function AttendanceDetail() {
       await extractFn({ data: { attendanceId: id } });
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
       toast.success("Dados extraídos");
-    } catch (e: any) {
-      toast.error(e.message ?? "Falha na extração");
+    } catch (error: any) {
+      toast.error(error.message ?? "Falha na extração");
     } finally {
       setExtracting(false);
     }
   }
 
   useEffect(() => {
-    // auto-trigger extraction if status is extracting and no data yet
-    if (att?.status === "extracting" && !Object.keys(att.extracted_data ?? {}).length && !extracting) {
+    if (
+      att?.status === "extracting" &&
+      !Object.keys(att.extracted_data ?? {}).length &&
+      !extracting
+    ) {
       triggerExtract();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,29 +169,30 @@ function AttendanceDetail() {
   }
 
   async function handleGenerate(templateId: string) {
-    // save first
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
     setGeneratingId(templateId);
     try {
       await generateFn({ data: { attendanceId: id, templateId } });
       toast.success("Documento gerado");
       qc.invalidateQueries({ queryKey: ["generated", id] });
-    } catch (e: any) {
-      toast.error(e.message ?? "Falha ao gerar");
+    } catch (error: any) {
+      toast.error(error.message ?? "Falha ao gerar");
     } finally {
       setGeneratingId(null);
     }
   }
 
   async function handleGenerateAll() {
-    if (!templates?.length) return toast.error("Nenhum modelo disponível para este processo.");
+    if (!applicableTemplates.length) {
+      return toast.error("Nenhum modelo aplicável a este atendimento.");
+    }
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
-    for (const t of templates) {
-      setGeneratingId(t.id);
+    for (const template of applicableTemplates) {
+      setGeneratingId(template.id);
       try {
-        await generateFn({ data: { attendanceId: id, templateId: t.id } });
-      } catch (e: any) {
-        toast.error(`${t.name}: ${e.message}`);
+        await generateFn({ data: { attendanceId: id, templateId: template.id } });
+      } catch (error: any) {
+        toast.error(`${template.name}: ${error.message}`);
       }
     }
     setGeneratingId(null);
@@ -168,8 +206,8 @@ function AttendanceDetail() {
     try {
       const { url } = await signFn({ data: { bucket, path } });
       window.open(url, "_blank");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: any) {
+      toast.error(error.message);
     }
   }
 
@@ -194,16 +232,30 @@ function AttendanceDetail() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <button onClick={() => navigate({ to: "/dashboard" })} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+          <button
+            onClick={() => navigate({ to: "/dashboard" })}
+            className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          >
             <ArrowLeft className="h-3 w-3" /> Voltar
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight mt-2">{proc?.label ?? att.process}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">
+            {proc?.label ?? att.process}
+          </h1>
           <div className="text-sm text-muted-foreground">
-            {att.subprocess ? <Badge variant="outline" className="mr-2">{att.subprocess}</Badge> : null}
+            {att.subprocess ? (
+              <Badge variant="outline" className="mr-2">
+                {att.subprocess}
+              </Badge>
+            ) : null}
             Status: <span className="font-medium">{att.status}</span>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={deleteAttendance} className="text-destructive hover:text-destructive">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={deleteAttendance}
+          className="text-destructive hover:text-destructive"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
@@ -216,8 +268,18 @@ function AttendanceDetail() {
                 <CardTitle>Dados extraídos</CardTitle>
                 <CardDescription>Revise e corrija antes de gerar os documentos.</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={triggerExtract} disabled={extracting} className="gap-2">
-                {extracting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={triggerExtract}
+                disabled={extracting}
+                className="gap-2"
+              >
+                {extracting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
                 Re-extrair
               </Button>
             </CardHeader>
@@ -229,17 +291,21 @@ function AttendanceDetail() {
               )}
               {allFields.length === 0 && !extracting && (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum dado ainda. Adicione modelos com placeholders {"{campo}"} em <a className="underline" href="/modelos">Modelos</a> ou clique em Re-extrair.
+                  Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com placeholders{" "}
+                  {"{campo}"} em <a className="underline" href="/modelos">Modelos</a>, depois clique em
+                  Re-extrair.
                 </p>
               )}
               <div className="grid sm:grid-cols-2 gap-3">
-                {allFields.map((k) => (
-                  <div key={k} className="space-y-1">
-                    <Label htmlFor={k} className="text-xs">{k}</Label>
+                {allFields.map((key) => (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={key} className="text-xs">
+                      {key}
+                    </Label>
                     <Input
-                      id={k}
-                      value={fields[k] ?? ""}
-                      onChange={(e) => setFields({ ...fields, [k]: e.target.value })}
+                      id={key}
+                      value={fields[key] ?? ""}
+                      onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
                     />
                   </div>
                 ))}
@@ -249,8 +315,8 @@ function AttendanceDetail() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    const name = prompt("Nome do campo (ex: nome_falecido)");
-                    if (name) setFields({ ...fields, [name.trim()]: "" });
+                    const fieldName = prompt("Nome do campo (ex: nome_falecido)");
+                    if (fieldName) setFields({ ...fields, [fieldName.trim()]: "" });
                   }}
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar campo
@@ -266,31 +332,51 @@ function AttendanceDetail() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Documentos</CardTitle>
-                <CardDescription>Modelos disponíveis para este processo.</CardDescription>
+                <CardDescription>Modelos aplicáveis ao processo e à modalidade escolhida.</CardDescription>
               </div>
-              {!!templates?.length && (
-                <Button size="sm" onClick={handleGenerateAll} disabled={!!generatingId} className="gap-2">
+              {!!applicableTemplates.length && (
+                <Button
+                  size="sm"
+                  onClick={handleGenerateAll}
+                  disabled={!!generatingId}
+                  className="gap-2"
+                >
                   <FileDown className="h-3 w-3" /> Gerar todos
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-2">
-              {!templates?.length && (
+              {!applicableTemplates.length && (
                 <div className="text-sm text-muted-foreground">
-                  Nenhum modelo cadastrado. Envie modelos em <a className="underline" href="/modelos">Modelos</a>.
+                  Nenhum modelo aplicável. Instale os modelos oficiais em{" "}
+                  <a className="underline" href="/modelos">Modelos</a>.
                 </div>
               )}
-              {templates?.map((t) => (
-                <div key={t.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+              {applicableTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  className="flex items-center justify-between border rounded-md px-3 py-2"
+                >
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <div className="text-sm font-medium">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{(t.placeholders as string[])?.length ?? 0} campos</div>
+                      <div className="text-sm font-medium">{template.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(template.placeholders as string[])?.length ?? 0} campos
+                      </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => handleGenerate(t.id)} disabled={generatingId === t.id}>
-                    {generatingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Gerar"}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleGenerate(template.id)}
+                    disabled={generatingId === template.id}
+                  >
+                    {generatingId === template.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      "Gerar"
+                    )}
                   </Button>
                 </div>
               ))}
@@ -303,13 +389,21 @@ function AttendanceDetail() {
                 <CardTitle>Documentos gerados</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {generated.map((g) => (
-                  <div key={g.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+                {generated.map((document) => (
+                  <div
+                    key={document.id}
+                    className="flex items-center justify-between border rounded-md px-3 py-2"
+                  >
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{g.name}</span>
+                      <span className="text-sm">{document.name}</span>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => download("generated-documents", g.storage_path)} className="gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => download("generated-documents", document.storage_path)}
+                      className="gap-1"
+                    >
                       <FileDown className="h-3 w-3" /> Baixar
                     </Button>
                   </div>
@@ -322,8 +416,8 @@ function AttendanceDetail() {
         <div className="space-y-3">
           <div className="text-sm font-medium">Imagens ({images?.length ?? 0})</div>
           <div className="grid grid-cols-2 gap-2">
-            {images?.map((img) => (
-              <ImageThumb key={img.id} path={img.storage_path} />
+            {images?.map((image) => (
+              <ImageThumb key={image.id} path={image.storage_path} />
             ))}
           </div>
         </div>
@@ -335,9 +429,12 @@ function AttendanceDetail() {
 function ImageThumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
-    supabase.storage.from("attendance-images").createSignedUrl(path, 600).then(({ data }) => {
-      if (data?.signedUrl) setUrl(data.signedUrl);
-    });
+    supabase.storage
+      .from("attendance-images")
+      .createSignedUrl(path, 600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
   }, [path]);
   return (
     <div className="aspect-square rounded-md overflow-hidden border bg-muted">

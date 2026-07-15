@@ -69,7 +69,7 @@ jobs:
 
           replace("src/lib/attendances.functions.ts", [
               ('async function syncLinkedAgenda(\n  supabaseClient: any,', 'async function syncLinkedAgenda(\n  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.\n  // eslint-disable-next-line @typescript-eslint/no-explicit-any\n  supabaseClient: any,'),
-              ('const agendaSynced = await syncLinkedAgenda(supabase as any, data.attendanceId, extracted);', 'const agendaSynced = await syncLinkedAgenda(\n      // eslint-disable-next-line @typescript-eslint/no-explicit-any\n      supabase as any,\n      data.attendanceId,\n      extracted,\n    );'),
+              ('const agendaSynced = await syncLinkedAgenda(supabase as any, data.attendanceId, extracted);', 'const agendaSynced = await syncLinkedAgenda(supabase, data.attendanceId, extracted);'),
           ])
           PY
 

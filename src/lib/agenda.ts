@@ -108,10 +108,7 @@ export const EXUMATION_RESULTS = [
   "Cancelado",
 ] as const;
 
-export function emptyAgendaDraft(
-  agendaType: AgendaType,
-  eventDate: string,
-): AgendaEventDraft {
+export function emptyAgendaDraft(agendaType: AgendaType, eventDate: string): AgendaEventDraft {
   return {
     agenda_type: agendaType,
     event_date: eventDate,

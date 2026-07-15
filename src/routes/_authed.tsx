@@ -3,14 +3,7 @@ import { useEffect } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  CalendarDays,
-  FileStack,
-  FileText,
-  LayoutDashboard,
-  Loader2,
-  LogOut,
-} from "lucide-react";
+import { CalendarDays, FileStack, FileText, LayoutDashboard, Loader2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed")({

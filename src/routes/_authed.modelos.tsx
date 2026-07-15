@@ -4,13 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +26,7 @@ import {
   Upload,
 } from "lucide-react";
 import { PROCESSES } from "@/lib/processes";
+import { getErrorMessage } from "@/lib/error-message";
 import { analyzeTemplate } from "@/lib/attendances.functions";
 import {
   getOfficialInstallVariants,
@@ -86,7 +81,9 @@ function Templates() {
   );
 
   const installedOfficialCount = officialVariants.filter((variant) =>
-    [...installedOfficialPaths].some((path) => path.endsWith(`/official/${variant.storageId}.docx`)),
+    [...installedOfficialPaths].some((path) =>
+      path.endsWith(`/official/${variant.storageId}.docx`),
+    ),
   ).length;
 
   async function upload() {
@@ -103,8 +100,7 @@ function Templates() {
       const { error: upErr } = await supabase.storage
         .from("document-templates")
         .upload(path, file, {
-          contentType:
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         });
       if (upErr) throw upErr;
 
@@ -124,8 +120,8 @@ function Templates() {
       setFile(null);
       setProcessKey("any");
       qc.invalidateQueries({ queryKey: ["templates-all"] });
-    } catch (error: any) {
-      toast.error(error.message ?? "Erro ao enviar modelo");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Erro ao enviar modelo"));
     } finally {
       setSubmitting(false);
     }
@@ -167,8 +163,7 @@ function Templates() {
         const { error: uploadError } = await supabase.storage
           .from("document-templates")
           .upload(storagePath, blob, {
-            contentType:
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             upsert: true,
           });
         if (uploadError) throw uploadError;
@@ -198,8 +193,8 @@ function Templates() {
           `${installed} modelo(s) oficial(is) instalado(s)${skipped ? ` · ${skipped} já existia(m)` : ""}.`,
         );
       }
-    } catch (error: any) {
-      toast.error(error.message ?? "Erro ao instalar modelos oficiais");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Erro ao instalar modelos oficiais"));
     } finally {
       setInstallingOfficial(false);
     }
@@ -207,7 +202,9 @@ function Templates() {
 
   async function remove(id: string, path: string) {
     if (isOfficialStoragePath(path)) {
-      return toast.error("Modelos oficiais são protegidos e não podem ser excluídos por esta tela.");
+      return toast.error(
+        "Modelos oficiais são protegidos e não podem ser excluídos por esta tela.",
+      );
     }
     if (!confirm("Excluir modelo?")) return;
     await supabase.storage.from("document-templates").remove([path]);
@@ -243,7 +240,8 @@ function Templates() {
           >
             {installingOfficial ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : installedOfficialCount === officialVariants.length && officialVariants.length > 0 ? (
+            ) : installedOfficialCount === officialVariants.length &&
+              officialVariants.length > 0 ? (
               <CheckCircle2 className="h-4 w-4 mr-2" />
             ) : (
               <FileCheck2 className="h-4 w-4 mr-2" />
@@ -366,8 +364,8 @@ function Templates() {
                       {official && <Badge variant="secondary">Oficial</Badge>}
                       <Badge variant="outline" className="text-xs">
                         {template.process
-                          ? PROCESSES.find((process) => process.key === template.process)?.label ??
-                            template.process
+                          ? (PROCESSES.find((process) => process.key === template.process)?.label ??
+                            template.process)
                           : "Todos"}
                       </Badge>
                     </div>

@@ -107,7 +107,8 @@ export const PROCESSES: ProcessDef[] = [
         label: "Data da exumação",
         type: "date",
         section: "Agenda de exumação",
-        description: "Ao informar a data, o atendimento será incluído automaticamente na agenda escolhida.",
+        description:
+          "Ao informar a data, o atendimento será incluído automaticamente na agenda escolhida.",
       },
       {
         name: "hora_agendamento",

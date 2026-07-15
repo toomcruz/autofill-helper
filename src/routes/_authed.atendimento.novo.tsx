@@ -2,13 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CalendarDays, Loader2, Upload, X } from "lucide-react";
 import type { AgendaType } from "@/lib/agenda";
+import { getErrorMessage } from "@/lib/error-message";
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
   component: NewAttendance,
@@ -31,6 +26,8 @@ export const Route = createFileRoute("/_authed/atendimento/novo")({
 
 type Step = "process" | "details" | "upload";
 
+// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
 function NewAttendance() {
@@ -82,10 +79,7 @@ function NewAttendance() {
     return scheduleKeys.some((key) => extras[key]?.trim()) && !extras.data_agendada?.trim();
   }
 
-  async function createLinkedAgendaEvent(
-    attendanceId: string,
-    userId: string,
-  ): Promise<void> {
+  async function createLinkedAgendaEvent(attendanceId: string, userId: string): Promise<void> {
     const eventDate = extras.data_agendada?.trim();
     if (!eventDate || !proc || !["sepultamento", "exumacao"].includes(proc.key)) return;
 
@@ -110,8 +104,7 @@ function NewAttendance() {
       location: proc.key === "exumacao" ? extras.localizacao || null : null,
       room: proc.key === "sepultamento" ? extras.sala_velorio || null : null,
       burial_time: proc.key === "sepultamento" ? extras.hora_sepultamento || null : null,
-      burial_location:
-        proc.key === "sepultamento" ? extras.local_sepultamento || null : null,
+      burial_location: proc.key === "sepultamento" ? extras.local_sepultamento || null : null,
       funeral_home: proc.key === "sepultamento" ? extras.funeraria || null : null,
       pss_reference: agendaType === "exumacao_pss" ? extras.referencia_pss || null : null,
       status: "agendado",
@@ -168,8 +161,8 @@ function NewAttendance() {
 
       await createLinkedAgendaEvent(attendance.id, userId);
       navigate({ to: "/atendimento/$id", params: { id: attendance.id } });
-    } catch (error: any) {
-      toast.error(error.message ?? "Erro ao criar atendimento");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Erro ao criar atendimento"));
       setSubmitting(false);
     }
   }
@@ -216,7 +209,9 @@ function NewAttendance() {
         <Card>
           <CardHeader>
             <CardTitle>{proc.label}</CardTitle>
-            <CardDescription>Defina os detalhes do atendimento e, quando necessário, a agenda.</CardDescription>
+            <CardDescription>
+              Defina os detalhes do atendimento e, quando necessário, a agenda.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {proc.subprocessOptions && (
@@ -240,11 +235,7 @@ function NewAttendance() {
               </div>
             )}
 
-            <ExtraFields
-              fields={visibleExtraFields}
-              values={extras}
-              onChange={updateExtra}
-            />
+            <ExtraFields fields={visibleExtraFields} values={extras} onChange={updateExtra} />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Observações (opcional)</Label>
@@ -339,11 +330,7 @@ function NewAttendance() {
             )}
 
             <div className="flex justify-between pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setStep("details")}
-                disabled={submitting}
-              >
+              <Button variant="outline" onClick={() => setStep("details")} disabled={submitting}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               <Button onClick={submit} disabled={submitting || !files.length}>
@@ -466,10 +453,7 @@ function Stepper({ current }: { current: Step }) {
             {position + 1}
           </div>
           <span
-            className={cn(
-              "text-xs",
-              position === index ? "font-medium" : "text-muted-foreground",
-            )}
+            className={cn("text-xs", position === index ? "font-medium" : "text-muted-foreground")}
           >
             {step.label}
           </span>

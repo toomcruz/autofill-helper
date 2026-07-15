@@ -2,14 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/error-message";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +59,8 @@ export const Route = createFileRoute("/_authed/agenda")({
   component: OperationalAgenda,
 });
 
+// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
 function todayIso(): string {
@@ -107,9 +104,7 @@ function OperationalAgenda() {
 
   const filteredEvents = useMemo(
     () =>
-      (events ?? []).filter(
-        (event) => statusFilter === "todos" || event.status === statusFilter,
-      ),
+      (events ?? []).filter((event) => statusFilter === "todos" || event.status === statusFilter),
     [events, statusFilter],
   );
 
@@ -141,10 +136,7 @@ function OperationalAgenda() {
     setDialogOpen(true);
   }
 
-  function updateDraft<K extends keyof AgendaEventDraft>(
-    key: K,
-    value: AgendaEventDraft[K],
-  ) {
+  function updateDraft<K extends keyof AgendaEventDraft>(key: K, value: AgendaEventDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
@@ -174,11 +166,7 @@ function OperationalAgenda() {
         burial_location: toNullable(draft.burial_location),
         funeral_home: toNullable(draft.funeral_home),
         family_present:
-          draft.family_present === "sim"
-            ? true
-            : draft.family_present === "nao"
-              ? false
-              : null,
+          draft.family_present === "sim" ? true : draft.family_present === "nao" ? false : null,
         destination: toNullable(draft.destination),
         result_status: toNullable(draft.result_status),
         payment_date: toNullable(draft.payment_date),
@@ -201,8 +189,8 @@ function OperationalAgenda() {
       setAgendaType(draft.agenda_type);
       setDialogOpen(false);
       await qc.invalidateQueries({ queryKey: ["agenda-events"] });
-    } catch (error: any) {
-      toast.error(error.message ?? "Não foi possível salvar o agendamento.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Não foi possível salvar o agendamento."));
     } finally {
       setSaving(false);
     }
@@ -451,8 +439,7 @@ function AgendaEventCard({
               )}
               {event.result_status && (
                 <div>
-                  <span className="text-muted-foreground">Resultado:</span>{" "}
-                  {event.result_status}
+                  <span className="text-muted-foreground">Resultado:</span> {event.result_status}
                 </div>
               )}
               {event.pss_reference && (
@@ -516,7 +503,8 @@ function AgendaDialog({
         <DialogHeader>
           <DialogTitle>{editing ? "Editar agendamento" : "Novo agendamento"}</DialogTitle>
           <DialogDescription>
-            Os dados pertencem apenas a este registro de agenda e podem ser vinculados ao atendimento.
+            Os dados pertencem apenas a este registro de agenda e podem ser vinculados ao
+            atendimento.
           </DialogDescription>
         </DialogHeader>
 

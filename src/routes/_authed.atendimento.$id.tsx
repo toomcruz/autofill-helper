@@ -4,32 +4,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  FileDown,
-  FileText,
-  Loader2,
-  Plus,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { getProcess } from "@/lib/processes";
-import {
-  extractAttendanceData,
-  generateDocument,
-  getSignedUrl,
-} from "@/lib/attendances.functions";
+import { getErrorMessage } from "@/lib/error-message";
+import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
 import { isTemplateApplicable } from "@/lib/official-templates";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
@@ -47,16 +30,12 @@ function AttendanceDetail() {
   const { data: att, isLoading } = useQuery({
     queryKey: ["attendance", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("attendances")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await supabase.from("attendances").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
     },
     refetchInterval: (query) => {
-      const status = (query.state.data as any)?.status;
+      const status = (query.state.data as { status?: string } | undefined)?.status;
       return status === "extracting" ? 2000 : false;
     },
   });
@@ -138,8 +117,8 @@ function AttendanceDetail() {
       await extractFn({ data: { attendanceId: id } });
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
       toast.success("Dados extraídos");
-    } catch (error: any) {
-      toast.error(error.message ?? "Falha na extração");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Falha na extração"));
     } finally {
       setExtracting(false);
     }
@@ -175,8 +154,8 @@ function AttendanceDetail() {
       await generateFn({ data: { attendanceId: id, templateId } });
       toast.success("Documento gerado");
       qc.invalidateQueries({ queryKey: ["generated", id] });
-    } catch (error: any) {
-      toast.error(error.message ?? "Falha ao gerar");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Falha ao gerar"));
     } finally {
       setGeneratingId(null);
     }
@@ -191,8 +170,8 @@ function AttendanceDetail() {
       setGeneratingId(template.id);
       try {
         await generateFn({ data: { attendanceId: id, templateId: template.id } });
-      } catch (error: any) {
-        toast.error(`${template.name}: ${error.message}`);
+      } catch (error: unknown) {
+        toast.error(`${template.name}: ${getErrorMessage(error, "Falha ao gerar")}`);
       }
     }
     setGeneratingId(null);
@@ -206,8 +185,8 @@ function AttendanceDetail() {
     try {
       const { url } = await signFn({ data: { bucket, path } });
       window.open(url, "_blank");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Falha ao baixar documento"));
     }
   }
 
@@ -291,9 +270,12 @@ function AttendanceDetail() {
               )}
               {allFields.length === 0 && !extracting && (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com placeholders{" "}
-                  {"{campo}"} em <a className="underline" href="/modelos">Modelos</a>, depois clique em
-                  Re-extrair.
+                  Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com
+                  placeholders {"{campo}"} em{" "}
+                  <a className="underline" href="/modelos">
+                    Modelos
+                  </a>
+                  , depois clique em Re-extrair.
                 </p>
               )}
               <div className="grid sm:grid-cols-2 gap-3">
@@ -332,7 +314,9 @@ function AttendanceDetail() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Documentos</CardTitle>
-                <CardDescription>Modelos aplicáveis ao processo e à modalidade escolhida.</CardDescription>
+                <CardDescription>
+                  Modelos aplicáveis ao processo e à modalidade escolhida.
+                </CardDescription>
               </div>
               {!!applicableTemplates.length && (
                 <Button
@@ -349,7 +333,10 @@ function AttendanceDetail() {
               {!applicableTemplates.length && (
                 <div className="text-sm text-muted-foreground">
                   Nenhum modelo aplicável. Instale os modelos oficiais em{" "}
-                  <a className="underline" href="/modelos">Modelos</a>.
+                  <a className="underline" href="/modelos">
+                    Modelos
+                  </a>
+                  .
                 </div>
               )}
               {applicableTemplates.map((template) => (

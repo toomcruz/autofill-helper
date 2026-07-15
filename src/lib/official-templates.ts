@@ -146,7 +146,10 @@ export function isTemplateApplicable(
     return attendance.process === "exumacao" && attendance.subprocess === "jazigo";
   }
   if (id === "aquisicao-renovacao-ossuario") {
-    return attendance.process === "ossario" && ["aquisicao", "renovacao"].includes(attendance.subprocess ?? "");
+    return (
+      attendance.process === "ossario" &&
+      ["aquisicao", "renovacao"].includes(attendance.subprocess ?? "")
+    );
   }
   if (id === "guia-exumacao-semi-intacto") {
     const values = [
@@ -165,7 +168,9 @@ export function isTemplateApplicable(
       attendance.extractedData?.sala_velorio,
       attendance.extractedData?.salaVelorio,
     ];
-    return attendance.process === "sepultamento" && values.some((value) => String(value ?? "").trim());
+    return (
+      attendance.process === "sepultamento" && values.some((value) => String(value ?? "").trim())
+    );
   }
 
   return true;
@@ -340,7 +345,13 @@ export function applyOfficialTemplateAliases(
 
   for (const [canonical, target] of Object.entries(aliases)) {
     if (String(output[target] ?? "").trim()) continue;
-    const candidates = [canonical, camelToSnake(canonical), target, camelToSnake(target), ...(SYNONYMS[canonical] ?? [])];
+    const candidates = [
+      canonical,
+      camelToSnake(canonical),
+      target,
+      camelToSnake(target),
+      ...(SYNONYMS[canonical] ?? []),
+    ];
     const source = candidates.find((key) => String(output[key] ?? "").trim());
     if (source) output[target] = output[source];
   }

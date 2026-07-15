@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -14,10 +14,8 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -27,55 +25,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Normalize error handling for changed files
-        shell: bash
+      - name: Check formatting
         run: |
-          python <<'PY'
-          from pathlib import Path
-
-          def replace(path: str, pairs: list[tuple[str, str]]) -> None:
-              file = Path(path)
-              text = file.read_text()
-              for old, new in pairs:
-                  text = text.replace(old, new)
-              file.write_text(text)
-
-          replace("src/routes/_authed.agenda.tsx", [
-              ('import { supabase } from "@/integrations/supabase/client";\n', 'import { supabase } from "@/integrations/supabase/client";\nimport { getErrorMessage } from "@/lib/error-message";\n'),
-              ('const db = supabase as any;', '// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.\n// eslint-disable-next-line @typescript-eslint/no-explicit-any\nconst db = supabase as any;'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Não foi possível salvar o agendamento.");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Não foi possível salvar o agendamento."));'),
-          ])
-
-          replace("src/routes/_authed.atendimento.novo.tsx", [
-              ('import type { AgendaType } from "@/lib/agenda";\n', 'import type { AgendaType } from "@/lib/agenda";\nimport { getErrorMessage } from "@/lib/error-message";\n'),
-              ('const db = supabase as any;', '// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.\n// eslint-disable-next-line @typescript-eslint/no-explicit-any\nconst db = supabase as any;'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Erro ao criar atendimento");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Erro ao criar atendimento"));'),
-          ])
-
-          replace("src/routes/_authed.modelos.tsx", [
-              ('import { PROCESSES } from "@/lib/processes";\n', 'import { PROCESSES } from "@/lib/processes";\nimport { getErrorMessage } from "@/lib/error-message";\n'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Erro ao enviar modelo");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Erro ao enviar modelo"));'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Erro ao instalar modelos oficiais");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Erro ao instalar modelos oficiais"));'),
-          ])
-
-          replace("src/routes/_authed.atendimento.$id.tsx", [
-              ('import { getProcess } from "@/lib/processes";\n', 'import { getProcess } from "@/lib/processes";\nimport { getErrorMessage } from "@/lib/error-message";\n'),
-              ('const status = (query.state.data as any)?.status;', 'const status = (query.state.data as { status?: string } | undefined)?.status;'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Falha na extração");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Falha na extração"));'),
-              ('} catch (error: any) {\n      toast.error(error.message ?? "Falha ao gerar");', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Falha ao gerar"));'),
-              ('} catch (error: any) {\n        toast.error(`${template.name}: ${error.message}`);', '} catch (error: unknown) {\n        toast.error(`${template.name}: ${getErrorMessage(error, "Falha ao gerar")}`);'),
-              ('} catch (error: any) {\n      toast.error(error.message);', '} catch (error: unknown) {\n      toast.error(getErrorMessage(error, "Falha ao baixar documento"));'),
-          ])
-
-          replace("src/lib/attendances.functions.ts", [
-              ('async function syncLinkedAgenda(\n  supabaseClient: any,', 'async function syncLinkedAgenda(\n  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.\n  // eslint-disable-next-line @typescript-eslint/no-explicit-any\n  supabaseClient: any,'),
-              ('const agendaSynced = await syncLinkedAgenda(supabase as any, data.attendanceId, extracted);', 'const agendaSynced = await syncLinkedAgenda(supabase, data.attendanceId, extracted);'),
-          ])
-          PY
-
-      - name: Format changed files
-        run: |
-          bunx prettier --write \
+          bunx prettier --check \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \
@@ -88,27 +40,13 @@ jobs:
             src/routes/_authed.tsx
 
       - name: TypeScript
-        id: typescript
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          bunx tsc --noEmit 2>&1 | tee typescript.log
+        run: bunx tsc --noEmit
 
       - name: Build
-        id: build
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          bun run build 2>&1 | tee build.log
+        run: bun run build
 
       - name: Lint changed files
-        id: lint
-        continue-on-error: true
-        shell: bash
         run: |
-          set -o pipefail
           bunx eslint \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
@@ -119,41 +57,4 @@ jobs:
             'src/routes/_authed.atendimento.$id.tsx' \
             src/routes/_authed.atendimento.novo.tsx \
             src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx \
-            2>&1 | tee lint.log
-
-      - name: Upload validation reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: validation-reports
-          path: |
-            typescript.log
-            build.log
-            lint.log
-          retention-days: 7
-
-      - name: Validation gate
-        if: always()
-        env:
-          TYPESCRIPT_OUTCOME: ${{ steps.typescript.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          LINT_OUTCOME: ${{ steps.lint.outcome }}
-        run: |
-          if [ "$TYPESCRIPT_OUTCOME" != "success" ] || [ "$BUILD_OUTCOME" != "success" ] || [ "$LINT_OUTCOME" != "success" ]; then
-            echo "Validation failed: TypeScript=$TYPESCRIPT_OUTCOME Build=$BUILD_OUTCOME Lint=$LINT_OUTCOME"
-            exit 1
-          fi
-
-      - name: Commit normalized files
-        if: github.event_name == 'pull_request'
-        run: |
-          if git diff --quiet; then
-            echo "No formatting changes to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/lib src/routes
-          git commit -m "Normaliza formatação e tratamento de erros"
-          git push origin HEAD:${{ github.head_ref }}
+            src/routes/_authed.tsx

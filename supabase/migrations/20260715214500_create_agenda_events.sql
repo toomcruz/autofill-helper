@@ -1,4 +1,5 @@
 -- Agenda operacional unificada: exumação, velório/sepultamento e exumação PSS.
+-- PSS é mantido como classificação interna do setor; a expansão da sigla não é presumida.
 CREATE TABLE public.agenda_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,

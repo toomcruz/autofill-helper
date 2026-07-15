@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { applyOfficialTemplateAliases } from "@/lib/official-templates";
 import { z } from "zod";
 
 // -------- Extract data from attendance images --------
@@ -117,7 +118,9 @@ export const generateDocument = createServerFn({ method: "POST" })
 
     const buf = await blob.arrayBuffer();
     const { fillDocx } = await import("./docx.server");
-    const filled = fillDocx(buf, (att.extracted_data as Record<string, string>) ?? {});
+    const extracted = (att.extracted_data as Record<string, string>) ?? {};
+    const values = applyOfficialTemplateAliases(extracted, tpl.storage_path);
+    const filled = fillDocx(buf, values);
 
     const safeName = tpl.name.replace(/[^\w.-]+/g, "_");
     const outPath = `${userId}/${data.attendanceId}/${Date.now()}_${safeName}.docx`;

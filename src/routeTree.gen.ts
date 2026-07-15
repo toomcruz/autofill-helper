@@ -14,6 +14,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedModelosRouteImport } from './routes/_authed.modelos'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
+import { Route as AuthedAgendaRouteImport } from './routes/_authed.agenda'
 import { Route as AuthedAtendimentoNovoRouteImport } from './routes/_authed.atendimento.novo'
 import { Route as AuthedAtendimentoIdRouteImport } from './routes/_authed.atendimento.$id'
 
@@ -41,6 +42,11 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedAgendaRoute = AuthedAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedAtendimentoNovoRoute = AuthedAtendimentoNovoRouteImport.update({
   id: '/atendimento/novo',
   path: '/atendimento/novo',
@@ -55,6 +61,7 @@ const AuthedAtendimentoIdRoute = AuthedAtendimentoIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/agenda': typeof AuthedAgendaRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/modelos': typeof AuthedModelosRoute
   '/atendimento/$id': typeof AuthedAtendimentoIdRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/agenda': typeof AuthedAgendaRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/modelos': typeof AuthedModelosRoute
   '/atendimento/$id': typeof AuthedAtendimentoIdRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authed/agenda': typeof AuthedAgendaRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/modelos': typeof AuthedModelosRoute
   '/_authed/atendimento/$id': typeof AuthedAtendimentoIdRoute
@@ -83,6 +92,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/agenda'
     | '/dashboard'
     | '/modelos'
     | '/atendimento/$id'
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/agenda'
     | '/dashboard'
     | '/modelos'
     | '/atendimento/$id'
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/auth'
+    | '/_authed/agenda'
     | '/_authed/dashboard'
     | '/_authed/modelos'
     | '/_authed/atendimento/$id'
@@ -149,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/agenda': {
+      id: '/_authed/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AuthedAgendaRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/atendimento/novo': {
       id: '/_authed/atendimento/novo'
       path: '/atendimento/novo'
@@ -167,6 +186,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedAgendaRoute: typeof AuthedAgendaRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedModelosRoute: typeof AuthedModelosRoute
   AuthedAtendimentoIdRoute: typeof AuthedAtendimentoIdRoute
@@ -174,6 +194,7 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAgendaRoute: AuthedAgendaRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedModelosRoute: AuthedModelosRoute,
   AuthedAtendimentoIdRoute: AuthedAtendimentoIdRoute,

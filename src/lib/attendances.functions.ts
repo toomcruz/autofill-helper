@@ -3,10 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { applyOfficialTemplateAliases } from "@/lib/official-templates";
 import { z } from "zod";
 
-function firstExtractedValue(
-  extracted: Record<string, string>,
-  keys: string[],
-): string | null {
+function firstExtractedValue(extracted: Record<string, string>, keys: string[]): string | null {
   for (const key of keys) {
     const value = String(extracted[key] ?? "").trim();
     if (value) return value;
@@ -15,6 +12,8 @@ function firstExtractedValue(
 }
 
 async function syncLinkedAgenda(
+  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseClient: any,
   attendanceId: string,
   extracted: Record<string, string>,
@@ -179,10 +178,7 @@ export const extractAttendanceData = createServerFn({ method: "POST" })
     });
 
     if (!Object.keys(extracted).length) {
-      await supabase
-        .from("attendances")
-        .update({ status: "error" })
-        .eq("id", data.attendanceId);
+      await supabase.from("attendances").update({ status: "error" }).eq("id", data.attendanceId);
       throw new Error("A IA não devolveu dados válidos. Tente novamente.");
     }
 
@@ -193,7 +189,8 @@ export const extractAttendanceData = createServerFn({ method: "POST" })
     if (saveError) throw new Error(saveError.message);
 
     const agendaSynced = await syncLinkedAgenda(
-      supabase as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      supabase,
       data.attendanceId,
       extracted,
     );
@@ -243,8 +240,7 @@ export const generateDocument = createServerFn({ method: "POST" })
     const { error: uploadError } = await supabase.storage
       .from("generated-documents")
       .upload(outputPath, filled, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         upsert: false,
       });
     if (uploadError) throw new Error(uploadError.message);

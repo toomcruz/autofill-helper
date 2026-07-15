@@ -1,87 +1,201 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { applyOfficialTemplateAliases } from "@/lib/official-templates";
 import { z } from "zod";
+
+function firstExtractedValue(extracted: Record<string, string>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = String(extracted[key] ?? "").trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+async function syncLinkedAgenda(
+  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient: any,
+  attendanceId: string,
+  extracted: Record<string, string>,
+): Promise<boolean> {
+  const { data: event, error: eventError } = await supabaseClient
+    .from("agenda_events")
+    .select(
+      "id, deceased_name, responsible_name, registration_number, location, room, start_time, end_time, burial_time, burial_location, funeral_home",
+    )
+    .eq("attendance_id", attendanceId)
+    .maybeSingle();
+
+  if (eventError || !event) return false;
+
+  const candidates: Record<string, string | null> = {
+    deceased_name: firstExtractedValue(extracted, [
+      "nome_falecido",
+      "nomeFalecido",
+      "nomeFal",
+      "falecido",
+    ]),
+    responsible_name: firstExtractedValue(extracted, [
+      "nome_responsavel",
+      "nome_requerente",
+      "nomeResponsavel",
+      "nomeRequerente",
+      "nomeResp",
+    ]),
+    registration_number: firstExtractedValue(extracted, [
+      "inscricao_gs",
+      "inscricaoGS",
+      "inscrGS",
+      "numero_inscricao",
+    ]),
+    location: firstExtractedValue(extracted, [
+      "localizacao",
+      "local_exumacao",
+      "localExumacao",
+      "quadraRua",
+    ]),
+    room: firstExtractedValue(extracted, ["sala_velorio", "salaVelorio", "sala"]),
+    start_time: firstExtractedValue(extracted, [
+      "inicio_velorio",
+      "horario_inicio_velorio",
+      "hora_agendamento",
+      "horaAg",
+    ]),
+    end_time: firstExtractedValue(extracted, ["fim_velorio", "horario_fim_velorio"]),
+    burial_time: firstExtractedValue(extracted, [
+      "hora_sepultamento",
+      "horario_sepultamento",
+      "horaSep",
+    ]),
+    burial_location: firstExtractedValue(extracted, [
+      "local_sepultamento",
+      "localSepultamento",
+      "quadraRua",
+    ]),
+    funeral_home: firstExtractedValue(extracted, [
+      "funeraria",
+      "empresa_funeraria",
+      "empresaFuneraria",
+      "agencia",
+    ]),
+  };
+
+  const patch: Record<string, string> = {};
+  for (const [field, candidate] of Object.entries(candidates)) {
+    if (!String(event[field] ?? "").trim() && candidate) patch[field] = candidate;
+  }
+
+  if (!Object.keys(patch).length) return true;
+  const { error: updateError } = await supabaseClient
+    .from("agenda_events")
+    .update(patch)
+    .eq("id", event.id);
+  return !updateError;
+}
 
 // -------- Extract data from attendance images --------
 const ExtractInput = z.object({ attendanceId: z.string().uuid() });
 
 export const extractAttendanceData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => ExtractInput.parse(v))
+  .inputValidator((value: unknown) => ExtractInput.parse(value))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Load attendance
-    const { data: att, error: attErr } = await supabase
+    const { data: attendance, error: attendanceError } = await supabase
       .from("attendances")
       .select("id, process, subprocess, subprocess_details")
       .eq("id", data.attendanceId)
       .single();
-    if (attErr || !att) throw new Error("Atendimento não encontrado");
+    if (attendanceError || !attendance) throw new Error("Atendimento não encontrado");
 
-    // Load images
-    const { data: imgs, error: imgErr } = await supabase
+    const { data: images, error: imageError } = await supabase
       .from("attendance_images")
       .select("storage_path, mime_type")
       .eq("attendance_id", data.attendanceId);
-    if (imgErr) throw new Error(imgErr.message);
-    if (!imgs?.length) throw new Error("Nenhuma imagem enviada");
+    if (imageError) throw new Error(imageError.message);
+    if (!images?.length) throw new Error("Nenhuma imagem enviada");
 
-    // Load user templates for this process to collect placeholders
-    const { data: tpls } = await supabase
+    const { data: templates } = await supabase
       .from("document_templates")
       .select("placeholders, process")
       .eq("user_id", userId);
     const fieldSet = new Set<string>();
-    for (const t of tpls ?? []) {
-      if (!t.process || t.process === att.process) {
-        for (const p of (t.placeholders as string[]) ?? []) fieldSet.add(p);
+    for (const template of templates ?? []) {
+      if (!template.process || template.process === attendance.process) {
+        for (const placeholder of (template.placeholders as string[]) ?? []) {
+          fieldSet.add(placeholder);
+        }
       }
     }
-    // Always include common fallback fields
-    for (const f of [
+
+    for (const field of [
       "nome_falecido",
       "cpf_falecido",
       "data_nascimento",
       "data_falecimento",
       "data_sepultamento",
+      "hora_sepultamento",
       "local_sepultamento",
+      "sala_velorio",
+      "inicio_velorio",
+      "fim_velorio",
       "nome_responsavel",
       "cpf_responsavel",
+      "inscricao_gs",
+      "hora_agendamento",
+      "localizacao",
       "endereco",
       "telefone",
-    ])
-      fieldSet.add(f);
+    ]) {
+      fieldSet.add(field);
+    }
 
-    // Download each image and convert to data URL
     const imageDataUrls: string[] = [];
-    for (const img of imgs) {
+    for (const image of images) {
       const { data: blob, error } = await supabase.storage
         .from("attendance-images")
-        .download(img.storage_path);
+        .download(image.storage_path);
       if (error || !blob) continue;
-      const buf = new Uint8Array(await blob.arrayBuffer());
-      let bin = "";
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const b64 = btoa(bin);
-      const mime = img.mime_type || "image/jpeg";
-      imageDataUrls.push(`data:${mime};base64,${b64}`);
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      let binary = "";
+      for (let index = 0; index < buffer.length; index += 1) {
+        binary += String.fromCharCode(buffer[index]);
+      }
+      const base64 = btoa(binary);
+      const mime = image.mime_type || "image/jpeg";
+      imageDataUrls.push(`data:${mime};base64,${base64}`);
     }
+
+    if (!imageDataUrls.length) throw new Error("Não foi possível ler as imagens enviadas");
 
     const { extractFromImages } = await import("./ai-extract.server");
     const extracted = await extractFromImages({
       imageDataUrls,
       fields: Array.from(fieldSet),
-      processLabel: att.process,
-      contextHints: `Subprocesso: ${att.subprocess ?? "-"}. Detalhes: ${JSON.stringify(att.subprocess_details)}`,
+      processLabel: attendance.process,
+      contextHints: `Subprocesso: ${attendance.subprocess ?? "-"}. Detalhes: ${JSON.stringify(attendance.subprocess_details)}`,
     });
 
-    await supabase
+    if (!Object.keys(extracted).length) {
+      await supabase.from("attendances").update({ status: "error" }).eq("id", data.attendanceId);
+      throw new Error("A IA não devolveu dados válidos. Tente novamente.");
+    }
+
+    const { error: saveError } = await supabase
       .from("attendances")
       .update({ extracted_data: extracted, status: "reviewing" })
       .eq("id", data.attendanceId);
+    if (saveError) throw new Error(saveError.message);
 
-    return { data: extracted };
+    const agendaSynced = await syncLinkedAgenda(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      supabase,
+      data.attendanceId,
+      extracted,
+    );
+
+    return { data: extracted, agendaSynced };
   });
 
 // -------- Generate a filled document --------
@@ -92,75 +206,76 @@ const GenerateInput = z.object({
 
 export const generateDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => GenerateInput.parse(v))
+  .inputValidator((value: unknown) => GenerateInput.parse(value))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: att } = await supabase
+    const { data: attendance } = await supabase
       .from("attendances")
       .select("id, extracted_data, process")
       .eq("id", data.attendanceId)
       .single();
-    if (!att) throw new Error("Atendimento não encontrado");
+    if (!attendance) throw new Error("Atendimento não encontrado");
 
-    const { data: tpl } = await supabase
+    const { data: template } = await supabase
       .from("document_templates")
       .select("id, name, storage_path")
       .eq("id", data.templateId)
       .single();
-    if (!tpl) throw new Error("Modelo não encontrado");
+    if (!template) throw new Error("Modelo não encontrado");
 
-    const { data: blob, error: dlErr } = await supabase.storage
+    const { data: blob, error: downloadError } = await supabase.storage
       .from("document-templates")
-      .download(tpl.storage_path);
-    if (dlErr || !blob) throw new Error("Falha ao baixar modelo");
+      .download(template.storage_path);
+    if (downloadError || !blob) throw new Error("Falha ao baixar modelo");
 
-    const buf = await blob.arrayBuffer();
+    const buffer = await blob.arrayBuffer();
     const { fillDocx } = await import("./docx.server");
-    const filled = fillDocx(buf, (att.extracted_data as Record<string, string>) ?? {});
+    const extracted = (attendance.extracted_data as Record<string, string>) ?? {};
+    const values = applyOfficialTemplateAliases(extracted, template.storage_path);
+    const filled = fillDocx(buffer, values);
 
-    const safeName = tpl.name.replace(/[^\w.-]+/g, "_");
-    const outPath = `${userId}/${data.attendanceId}/${Date.now()}_${safeName}.docx`;
-    const { error: upErr } = await supabase.storage
+    const safeName = template.name.replace(/[^\w.-]+/g, "_");
+    const outputPath = `${userId}/${data.attendanceId}/${Date.now()}_${safeName}.docx`;
+    const { error: uploadError } = await supabase.storage
       .from("generated-documents")
-      .upload(outPath, filled, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      .upload(outputPath, filled, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         upsert: false,
       });
-    if (upErr) throw new Error(upErr.message);
+    if (uploadError) throw new Error(uploadError.message);
 
-    const { data: rec, error: recErr } = await supabase
+    const { data: record, error: recordError } = await supabase
       .from("generated_documents")
       .insert({
         attendance_id: data.attendanceId,
         template_id: data.templateId,
         user_id: userId,
-        name: tpl.name,
-        storage_path: outPath,
+        name: template.name,
+        storage_path: outputPath,
       })
       .select("id, name, storage_path, created_at")
       .single();
-    if (recErr) throw new Error(recErr.message);
+    if (recordError) throw new Error(recordError.message);
 
-    return rec;
+    return record;
   });
 
 // -------- Detect template placeholders on upload --------
-const TplInput = z.object({ storagePath: z.string() });
+const TemplateInput = z.object({ storagePath: z.string() });
 
 export const analyzeTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => TplInput.parse(v))
+  .inputValidator((value: unknown) => TemplateInput.parse(value))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: blob, error } = await supabase.storage
       .from("document-templates")
       .download(data.storagePath);
     if (error || !blob) throw new Error("Não foi possível ler o modelo");
-    const buf = await blob.arrayBuffer();
+    const buffer = await blob.arrayBuffer();
     const { detectPlaceholders } = await import("./docx.server");
-    const placeholders = detectPlaceholders(buf);
+    const placeholders = detectPlaceholders(buffer);
     return { placeholders };
   });
 
@@ -169,7 +284,7 @@ const SignedInput = z.object({ bucket: z.string(), path: z.string() });
 
 export const getSignedUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => SignedInput.parse(v))
+  .inputValidator((value: unknown) => SignedInput.parse(value))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { data: signed, error } = await supabase.storage

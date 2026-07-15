@@ -1,9 +1,9 @@
-import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { FileText, LayoutDashboard, FileStack, LogOut, Loader2 } from "lucide-react";
+import { CalendarDays, FileStack, FileText, LayoutDashboard, Loader2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed")({
@@ -29,6 +29,7 @@ function AuthedLayout() {
 
   const nav = [
     { to: "/dashboard", label: "Atendimentos", icon: LayoutDashboard },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/modelos", label: "Modelos", icon: FileStack },
   ];
 
@@ -43,13 +44,17 @@ function AuthedLayout() {
             <span className="font-semibold">Apoio ao Atendimento</span>
           </Link>
           <nav className="flex items-center gap-1">
-            {nav.map((n) => {
-              const active = location.pathname.startsWith(n.to);
+            {nav.map((item) => {
+              const active = location.pathname.startsWith(item.to);
               return (
-                <Link key={n.to} to={n.to}>
-                  <Button variant={active ? "secondary" : "ghost"} size="sm" className={cn("gap-2")}>
-                    <n.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{n.label}</span>
+                <Link key={item.to} to={item.to}>
+                  <Button
+                    variant={active ? "secondary" : "ghost"}
+                    size="sm"
+                    className={cn("gap-2")}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{item.label}</span>
                   </Button>
                 </Link>
               );

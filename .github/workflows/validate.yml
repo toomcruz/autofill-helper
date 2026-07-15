@@ -37,8 +37,7 @@ jobs:
             'src/routes/_authed.atendimento.$id.tsx' \
             src/routes/_authed.atendimento.novo.tsx \
             src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx \
-            supabase/migrations/20260715214500_create_agenda_events.sql
+            src/routes/_authed.tsx
 
       - name: TypeScript
         run: bunx tsc --noEmit

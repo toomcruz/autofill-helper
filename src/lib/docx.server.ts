@@ -4,26 +4,19 @@ import Docxtemplater from "docxtemplater";
 
 export function detectPlaceholders(docxBuffer: ArrayBuffer): string[] {
   const zip = new PizZip(docxBuffer);
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    delimiters: { start: "{", end: "}" },
-  });
-  const tags = doc.getFullText().match(/\{([^{}]+)\}/g) ?? [];
   const clean = new Set<string>();
-  for (const t of tags) {
-    const name = t.slice(1, -1).trim();
-    if (name && !name.includes(" ")) clean.add(name);
+  // Scan main document and headers/footers
+  const candidates = Object.keys((zip as any).files ?? {}).filter(
+    (n) => n.startsWith("word/") && n.endsWith(".xml"),
+  );
+  for (const name of candidates) {
+    const xml = zip.file(name)?.asText() ?? "";
+    // Strip XML tags so placeholders split across runs still match
+    const stripped = xml.replace(/<[^>]+>/g, "");
+    const matches = stripped.match(/\{([a-zA-Z0-9_]+)\}/g) ?? [];
+    for (const m of matches) clean.add(m.slice(1, -1));
   }
-  // Also inspect internal template tags via getFullText – but safer: use parser
-  // Second pass: docxtemplater parses tags — use `postparse` via renderAsync could work.
-  // For robustness, also match tags inside the xml directly:
-  try {
-    const contentXml = zip.file("word/document.xml")?.asText() ?? "";
-    const xmlTags = contentXml.match(/\{([a-zA-Z0-9_]+)\}/g) ?? [];
-    for (const t of xmlTags) clean.add(t.slice(1, -1));
-  } catch {}
-  return Array.from(clean);
+  return Array.from(clean).sort();
 }
 
 export function fillDocx(docxBuffer: ArrayBuffer, data: Record<string, string>): Uint8Array {
@@ -35,6 +28,5 @@ export function fillDocx(docxBuffer: ArrayBuffer, data: Record<string, string>):
     nullGetter: () => "",
   });
   doc.render(data);
-  const out = doc.getZip().generate({ type: "uint8array" });
-  return out;
+  return doc.getZip().generate({ type: "uint8array" });
 }

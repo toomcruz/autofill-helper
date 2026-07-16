@@ -55,6 +55,16 @@ import {
   type AgendaType,
 } from "@/lib/agenda";
 import { computeExhumationSlotUsage } from "@/lib/agenda-slots";
+import {
+  EXHUMATION_PHASES,
+  EXHUMATION_TIME_SLOTS,
+  deleteExhumationEvent,
+  fetchExhumationEvents,
+  insertExhumationEvent,
+  isExhumationAgendaType,
+  updateExhumationEvent,
+  updateExhumationStatus,
+} from "@/lib/agenda-exhumation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/agenda")({
@@ -90,6 +100,9 @@ function OperationalAgenda() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["agenda-events", agendaType, selectedDate],
     queryFn: async () => {
+      if (agendaType === "exumacao" || agendaType === "exumacao_pss") {
+        return fetchExhumationEvents(agendaType, selectedDate);
+      }
       const { data, error } = await db
         .from("agenda_events")
         .select("*")
@@ -151,6 +164,13 @@ function OperationalAgenda() {
   async function saveEvent() {
     if (!draft.event_date) return toast.error("Informe a data do agendamento.");
     if (!draft.deceased_name.trim()) return toast.error("Informe o nome da pessoa falecida.");
+    const isExhumation = draft.agenda_type === "exumacao" || draft.agenda_type === "exumacao_pss";
+    if (isExhumation && !draft.start_time) {
+      return toast.error("Selecione um horário (08:30, 09:00 ou 09:30).");
+    }
+    if (isExhumation && !draft.service) {
+      return toast.error("Selecione a fase da exumação.");
+    }
 
     setSaving(true);
     try {
@@ -158,39 +178,70 @@ function OperationalAgenda() {
       const userId = userResult.user?.id;
       if (!userId) throw new Error("Sessão expirada");
 
-      const payload = {
-        user_id: userId,
-        agenda_type: draft.agenda_type,
-        event_date: draft.event_date,
-        start_time: toNullable(draft.start_time),
-        end_time: toNullable(draft.end_time),
-        deceased_name: toNullable(draft.deceased_name),
-        responsible_name: toNullable(draft.responsible_name),
-        registration_number: toNullable(draft.registration_number),
-        service: toNullable(draft.service),
-        location: toNullable(draft.location),
-        room: toNullable(draft.room),
-        burial_time: toNullable(draft.burial_time),
-        burial_location: toNullable(draft.burial_location),
-        funeral_home: toNullable(draft.funeral_home),
-        family_present:
-          draft.family_present === "sim" ? true : draft.family_present === "nao" ? false : null,
-        destination: toNullable(draft.destination),
-        result_status: toNullable(draft.result_status),
-        payment_date: toNullable(draft.payment_date),
-        pss_reference: toNullable(draft.pss_reference),
-        status: draft.status,
-        notes: toNullable(draft.notes),
-      };
+      const familyPresent =
+        draft.family_present === "sim" ? true : draft.family_present === "nao" ? false : null;
 
-      if (editingId) {
-        const { error } = await db.from("agenda_events").update(payload).eq("id", editingId);
-        if (error) throw error;
-        toast.success("Agendamento atualizado.");
+      if (isExhumation) {
+        const payload = {
+          user_id: userId,
+          agenda_type: draft.agenda_type as "exumacao" | "exumacao_pss",
+          event_date: draft.event_date,
+          time_slot: draft.start_time,
+          exhumation_phase: draft.service,
+          deceased_name: toNullable(draft.deceased_name),
+          responsible_name: toNullable(draft.responsible_name),
+          registration_number: toNullable(draft.registration_number),
+          location: toNullable(draft.location),
+          room: toNullable(draft.room),
+          funeral_home: toNullable(draft.funeral_home),
+          family_present: familyPresent,
+          destination: toNullable(draft.destination),
+          result_status: toNullable(draft.result_status),
+          payment_date: toNullable(draft.payment_date),
+          pss_reference: toNullable(draft.pss_reference),
+          status: draft.status,
+          notes: toNullable(draft.notes),
+        };
+        if (editingId) {
+          await updateExhumationEvent(editingId, payload);
+          toast.success("Agendamento atualizado.");
+        } else {
+          await insertExhumationEvent(payload);
+          toast.success("Agendamento criado.");
+        }
       } else {
-        const { error } = await db.from("agenda_events").insert(payload);
-        if (error) throw error;
-        toast.success("Agendamento criado.");
+        const payload = {
+          user_id: userId,
+          agenda_type: draft.agenda_type,
+          event_date: draft.event_date,
+          start_time: toNullable(draft.start_time),
+          end_time: toNullable(draft.end_time),
+          deceased_name: toNullable(draft.deceased_name),
+          responsible_name: toNullable(draft.responsible_name),
+          registration_number: toNullable(draft.registration_number),
+          service: toNullable(draft.service),
+          location: toNullable(draft.location),
+          room: toNullable(draft.room),
+          burial_time: toNullable(draft.burial_time),
+          burial_location: toNullable(draft.burial_location),
+          funeral_home: toNullable(draft.funeral_home),
+          family_present: familyPresent,
+          destination: toNullable(draft.destination),
+          result_status: toNullable(draft.result_status),
+          payment_date: toNullable(draft.payment_date),
+          pss_reference: toNullable(draft.pss_reference),
+          status: draft.status,
+          notes: toNullable(draft.notes),
+        };
+        if (editingId) {
+          const { error } = await db.from("agenda_events").update(payload).eq("id", editingId);
+          if (error) throw error;
+          toast.success("Agendamento atualizado.");
+        } else {
+          const { error } = await db.from("agenda_events").insert(payload);
+          if (error) throw error;
+          toast.success("Agendamento criado.");
+        }
       }
 
       setSelectedDate(draft.event_date);
@@ -206,16 +257,32 @@ function OperationalAgenda() {
 
   async function deleteEvent(event: AgendaEvent) {
     if (!confirm(`Excluir o agendamento de ${event.deceased_name ?? "esta pessoa"}?`)) return;
-    const { error } = await db.from("agenda_events").delete().eq("id", event.id);
-    if (error) return toast.error(error.message);
-    toast.success("Agendamento excluído.");
-    qc.invalidateQueries({ queryKey: ["agenda-events"] });
+    try {
+      if (event.agenda_type === "exumacao" || event.agenda_type === "exumacao_pss") {
+        await deleteExhumationEvent(event.id);
+      } else {
+        const { error } = await db.from("agenda_events").delete().eq("id", event.id);
+        if (error) throw error;
+      }
+      toast.success("Agendamento excluído.");
+      qc.invalidateQueries({ queryKey: ["agenda-events"] });
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Não foi possível excluir."));
+    }
   }
 
   async function quickStatus(event: AgendaEvent, status: AgendaStatus) {
-    const { error } = await db.from("agenda_events").update({ status }).eq("id", event.id);
-    if (error) return toast.error(error.message);
-    qc.invalidateQueries({ queryKey: ["agenda-events"] });
+    try {
+      if (event.agenda_type === "exumacao" || event.agenda_type === "exumacao_pss") {
+        await updateExhumationStatus(event.id, status);
+      } else {
+        const { error } = await db.from("agenda_events").update({ status }).eq("id", event.id);
+        if (error) throw error;
+      }
+      qc.invalidateQueries({ queryKey: ["agenda-events"] });
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Não foi possível atualizar."));
+    }
   }
 
   const currentType = AGENDA_TYPES.find((item) => item.value === agendaType)!;
@@ -586,20 +653,40 @@ function AgendaDialog({
               onChange={(event) => onChange("event_date", event.target.value)}
             />
           </Field>
-          <Field label={wake ? "Início do velório" : "Horário"}>
-            <Input
-              type="time"
-              value={draft.start_time}
-              onChange={(event) => onChange("start_time", event.target.value)}
-            />
+          <Field label={exumation ? "Horário (slot)" : wake ? "Início do velório" : "Horário"}>
+            {exumation ? (
+              <Select
+                value={draft.start_time || undefined}
+                onValueChange={(value) => onChange("start_time", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o slot" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXHUMATION_TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot} value={slot}>
+                      {slot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type="time"
+                value={draft.start_time}
+                onChange={(event) => onChange("start_time", event.target.value)}
+              />
+            )}
           </Field>
-          <Field label={wake ? "Fim do velório" : "Horário final (opcional)"}>
-            <Input
-              type="time"
-              value={draft.end_time}
-              onChange={(event) => onChange("end_time", event.target.value)}
-            />
-          </Field>
+          {!exumation && (
+            <Field label={wake ? "Fim do velório" : "Horário final (opcional)"}>
+              <Input
+                type="time"
+                value={draft.end_time}
+                onChange={(event) => onChange("end_time", event.target.value)}
+              />
+            </Field>
+          )}
           <Field label="Nome da pessoa falecida" className="sm:col-span-2">
             <Input
               value={draft.deceased_name}
@@ -618,11 +705,29 @@ function AgendaDialog({
               onChange={(event) => onChange("registration_number", event.target.value)}
             />
           </Field>
-          <Field label="Serviço">
-            <Input
-              value={draft.service}
-              onChange={(event) => onChange("service", event.target.value)}
-            />
+          <Field label={exumation ? "Fase da exumação" : "Serviço"}>
+            {exumation ? (
+              <Select
+                value={draft.service || undefined}
+                onValueChange={(value) => onChange("service", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a fase" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXHUMATION_PHASES.map((phase) => (
+                    <SelectItem key={phase.value} value={phase.value}>
+                      {phase.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={draft.service}
+                onChange={(event) => onChange("service", event.target.value)}
+              />
+            )}
           </Field>
           <Field label="Localização">
             <Input

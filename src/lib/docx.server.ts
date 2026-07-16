@@ -13,6 +13,11 @@ const DOUBLE_BRACE_DELIMITERS: TemplateDelimiters = {
   end: "}}",
 };
 
+const DOCUMENT_XML_PATH = "word/document.xml";
+const DOCUMENT_RELS_PATH = "word/_rels/document.xml.rels";
+const CONTENT_TYPES_PATH = "[Content_Types].xml";
+const TINY_INK_MAX_EXTENT = 1000;
+
 function getTemplateXmlFiles(zip: PizZip): string[] {
   const zipWithFiles = zip as PizZip & { files?: Record<string, unknown> };
   return Object.keys(zipWithFiles.files ?? {}).filter(
@@ -30,6 +35,81 @@ function detectDelimiters(zip: PizZip): TemplateDelimiters {
     if (/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/.test(stripped)) return DOUBLE_BRACE_DELIMITERS;
   }
   return SINGLE_BRACE_DELIMITERS;
+}
+
+function getXmlAttribute(fragment: string, name: string): string | undefined {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return fragment.match(new RegExp(`\\b${escapedName}=(["'])(.*?)\\1`))?.[2];
+}
+
+function normalizePackageTarget(baseDirectory: string, target: string): string {
+  const sourceSegments = target.startsWith("/")
+    ? target.slice(1).split("/")
+    : [...baseDirectory.split("/"), ...target.split("/")];
+  const normalized: string[] = [];
+
+  for (const segment of sourceSegments) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") normalized.pop();
+    else normalized.push(segment);
+  }
+
+  return normalized.join("/");
+}
+
+function removeTinyInkArtifacts(zip: PizZip): void {
+  const documentFile = zip.file(DOCUMENT_XML_PATH);
+  if (!documentFile) return;
+
+  const removedRelationshipIds = new Set<string>();
+  const cleanedDocument = documentFile.asText().replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+    if (!paragraph.includes("<w14:contentPart")) return paragraph;
+
+    const extent = paragraph.match(/<wp:extent\b[^>]*\bcx="(\d+)"[^>]*\bcy="(\d+)"/);
+    if (!extent) return paragraph;
+    if (Number(extent[1]) > TINY_INK_MAX_EXTENT || Number(extent[2]) > TINY_INK_MAX_EXTENT) {
+      return paragraph;
+    }
+
+    for (const match of paragraph.matchAll(/\br:id=(["'])(.*?)\1/g)) {
+      removedRelationshipIds.add(match[2]);
+    }
+    return "";
+  });
+
+  if (!removedRelationshipIds.size) return;
+  zip.file(DOCUMENT_XML_PATH, cleanedDocument);
+
+  const relationshipsFile = zip.file(DOCUMENT_RELS_PATH);
+  if (!relationshipsFile) return;
+
+  const removedTargets: string[] = [];
+  const cleanedRelationships = relationshipsFile
+    .asText()
+    .replace(/<Relationship\b[^>]*\/>/g, (relationship) => {
+      const id = getXmlAttribute(relationship, "Id");
+      if (!id || !removedRelationshipIds.has(id)) return relationship;
+
+      const target = getXmlAttribute(relationship, "Target");
+      if (target) removedTargets.push(target);
+      return "";
+    });
+  zip.file(DOCUMENT_RELS_PATH, cleanedRelationships);
+
+  const removedPackagePaths = removedTargets.map((target) => normalizePackageTarget("word", target));
+  for (const path of removedPackagePaths) zip.remove(path);
+
+  const contentTypesFile = zip.file(CONTENT_TYPES_PATH);
+  if (!contentTypesFile) return;
+
+  const removedPartNames = new Set(removedPackagePaths.map((path) => `/${path}`));
+  const cleanedContentTypes = contentTypesFile
+    .asText()
+    .replace(/<Override\b[^>]*\/>/g, (override) => {
+      const partName = getXmlAttribute(override, "PartName");
+      return partName && removedPartNames.has(partName) ? "" : override;
+    });
+  zip.file(CONTENT_TYPES_PATH, cleanedContentTypes);
 }
 
 function getDocxErrorMessage(error: unknown): string {
@@ -69,6 +149,7 @@ export function detectPlaceholders(docxBuffer: ArrayBuffer): string[] {
 export function fillDocx(docxBuffer: ArrayBuffer, data: Record<string, string>): Uint8Array {
   const zip = new PizZip(docxBuffer);
   try {
+    removeTinyInkArtifacts(zip);
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,

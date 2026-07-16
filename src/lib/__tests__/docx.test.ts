@@ -8,7 +8,10 @@ const OFFICIAL_TEMPLATES_DIR = "public/templates/official";
 
 function readTemplate(path: string): ArrayBuffer {
   const buffer = readFileSync(path);
-  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  );
 }
 
 function findDocxFiles(directory: string): string[] {
@@ -23,7 +26,10 @@ function findDocxFiles(directory: string): string[] {
 
 function fakeValuesFor(placeholders: string[]): Record<string, string> {
   return Object.fromEntries(
-    placeholders.map((placeholder) => [placeholder, `valor ficticio para ${placeholder}`]),
+    placeholders.map((placeholder) => [
+      placeholder,
+      `valor ficticio para ${placeholder}`,
+    ]),
   );
 }
 
@@ -42,7 +48,10 @@ function renderedText(docx: Uint8Array): string {
     .join("\n");
 }
 
-function expectNoUnresolvedPlaceholders(output: Uint8Array, templatePath: string): void {
+function expectNoUnresolvedPlaceholders(
+  output: Uint8Array,
+  templatePath: string,
+): void {
   expect(
     renderedText(output),
     `${templatePath} should not keep unresolved placeholders`,
@@ -51,13 +60,17 @@ function expectNoUnresolvedPlaceholders(output: Uint8Array, templatePath: string
 
 describe("docx official templates", () => {
   it("detects double-brace placeholders without inner brace duplicates", () => {
-    const template = readTemplate("public/templates/official/velorio/condolencias.docx");
+    const template = readTemplate(
+      "public/templates/official/velorio/condolencias.docx",
+    );
 
     expect(detectPlaceholders(template)).toEqual(["data", "nomeFal", "sala"]);
   });
 
   it("fills official double-brace templates without Docxtemplater Multi error", () => {
-    const template = readTemplate("public/templates/official/velorio/condolencias.docx");
+    const template = readTemplate(
+      "public/templates/official/velorio/condolencias.docx",
+    );
 
     expect(() =>
       fillDocx(template, {
@@ -97,7 +110,10 @@ describe("docx official templates", () => {
         expectNoUnresolvedPlaceholders(output, templatePath);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        expect(message, `${templatePath} should not throw Multi error`).not.toMatch(/multi error/i);
+        expect(
+          message,
+          `${templatePath} should not throw Multi error`,
+        ).not.toMatch(/multi error/i);
         throw error;
       }
     }

@@ -28,6 +28,7 @@ function AttendanceDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const extractFn = useServerFn(extractAttendanceData);
+  const extractVisionFn = useServerFn(extractAttendanceVision);
   const generateFn = useServerFn(generateDocument);
   const signFn = useServerFn(getSignedUrl);
 

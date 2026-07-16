@@ -219,6 +219,86 @@ export type Database = {
         }
         Relationships: []
       }
+      exhumation_appointments: {
+        Row: {
+          attendance_id: string | null
+          created_at: string
+          deceased_name: string | null
+          destination: string | null
+          event_date: string
+          exhumation_phase: string
+          family_present: boolean | null
+          funeral_home: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          payment_date: string | null
+          pss_reference: string | null
+          registration_number: string | null
+          responsible_name: string | null
+          result_status: string | null
+          room: string | null
+          status: string
+          time_slot: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_id?: string | null
+          created_at?: string
+          deceased_name?: string | null
+          destination?: string | null
+          event_date: string
+          exhumation_phase: string
+          family_present?: boolean | null
+          funeral_home?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          pss_reference?: string | null
+          registration_number?: string | null
+          responsible_name?: string | null
+          result_status?: string | null
+          room?: string | null
+          status?: string
+          time_slot: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_id?: string | null
+          created_at?: string
+          deceased_name?: string | null
+          destination?: string | null
+          event_date?: string
+          exhumation_phase?: string
+          family_present?: boolean | null
+          funeral_home?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          pss_reference?: string | null
+          registration_number?: string | null
+          responsible_name?: string | null
+          result_status?: string | null
+          room?: string | null
+          status?: string
+          time_slot?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exhumation_appointments_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_documents: {
         Row: {
           attendance_id: string

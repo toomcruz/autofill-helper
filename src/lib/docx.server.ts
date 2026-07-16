@@ -76,7 +76,11 @@ export function fillDocx(docxBuffer: ArrayBuffer, data: Record<string, string>):
       nullGetter: () => "",
     });
     doc.render(data);
-    return doc.getZip().generate({ type: "uint8array" });
+    return doc.getZip().generate({
+      type: "uint8array",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
   } catch (error: unknown) {
     throw new Error(getDocxErrorMessage(error));
   }

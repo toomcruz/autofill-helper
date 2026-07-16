@@ -62,6 +62,12 @@ function NewAttendance() {
     return field;
   });
 
+  const previewedDocuments = (() => {
+    if (!proc) return [];
+    const ctx = buildAttendanceContext(proc.key, subprocess, extras);
+    return ctx ? getRequiredDocuments(ctx) : [];
+  })();
+
   function addFiles(list: FileList | null) {
     if (!list) return;
     const selected = Array.from(list).filter((file) => file.type.startsWith("image/"));

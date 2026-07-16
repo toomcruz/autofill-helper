@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenda_events: {
+        Row: {
+          agenda_type: string
+          attendance_id: string | null
+          burial_location: string | null
+          burial_time: string | null
+          created_at: string
+          deceased_name: string | null
+          destination: string | null
+          end_time: string | null
+          event_date: string
+          family_present: boolean | null
+          funeral_home: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          payment_date: string | null
+          pss_reference: string | null
+          registration_number: string | null
+          responsible_name: string | null
+          result_status: string | null
+          room: string | null
+          service: string | null
+          start_time: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agenda_type: string
+          attendance_id?: string | null
+          burial_location?: string | null
+          burial_time?: string | null
+          created_at?: string
+          deceased_name?: string | null
+          destination?: string | null
+          end_time?: string | null
+          event_date: string
+          family_present?: boolean | null
+          funeral_home?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          pss_reference?: string | null
+          registration_number?: string | null
+          responsible_name?: string | null
+          result_status?: string | null
+          room?: string | null
+          service?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agenda_type?: string
+          attendance_id?: string | null
+          burial_location?: string | null
+          burial_time?: string | null
+          created_at?: string
+          deceased_name?: string | null
+          destination?: string | null
+          end_time?: string | null
+          event_date?: string
+          family_present?: boolean | null
+          funeral_home?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          pss_reference?: string | null
+          registration_number?: string | null
+          responsible_name?: string | null
+          result_status?: string | null
+          room?: string | null
+          service?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_events_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_images: {
         Row: {
           attendance_id: string

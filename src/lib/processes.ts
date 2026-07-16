@@ -99,7 +99,7 @@ export const PROCESSES: ProcessDef[] = [
         section: "Agenda de exumação",
         options: [
           { value: "exumacao", label: "Agenda de Exumação" },
-          { value: "exumacao_pss", label: "Exumação PSS" },
+          { value: "exumacao_pss", label: "Exumação para Pronto Sepultamento (PPS)" },
         ],
       },
       {
@@ -124,8 +124,8 @@ export const PROCESSES: ProcessDef[] = [
         placeholder: "Quadra, terreno, sepultura ou gaveta",
       },
       {
-        name: "referencia_pss",
-        label: "Número / referência PSS",
+        name: "referencia_pps",
+        label: "Número / referência PPS",
         type: "text",
         section: "Agenda de exumação",
         showWhen: { field: "tipo_agenda_exumacao", equals: "exumacao_pss" },

@@ -298,10 +298,11 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     sensitive: false,
   },
   {
-    key: "referencia_pss",
-    label: "Referência PSS",
+    key: "referencia_pps",
+    label: "Referência PPS",
     entity: "atendimento",
-    aliases: ["referenciapss", "num_pss", "numero_pss"],
+    // PPS = Exumação para Pronto Sepultamento. Mantém aliases PSS para leitura de dados legados.
+    aliases: ["referencia_pss", "referenciapps", "referenciapss", "num_pps", "num_pss", "numero_pps", "numero_pss"],
     type: "text",
     processes: ["exumacao"],
     validator: "preserve",

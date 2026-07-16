@@ -37,7 +37,7 @@ export function validateCPF(input: string): ValidationOutcome {
 export function validateDateBR(input: string): ValidationOutcome {
   if (typeof input !== "string") return invalid("Valor não é texto");
   const trimmed = input.trim();
-  const match = trimmed.match(/^(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})$/);
+  const match = trimmed.match(/^(\d{2})[-/.](\d{2})[-/.](\d{4})$/);
   if (!match) return invalid("Formato esperado DD/MM/AAAA");
   const day = Number.parseInt(match[1], 10);
   const month = Number.parseInt(match[2], 10);

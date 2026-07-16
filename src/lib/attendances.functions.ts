@@ -80,9 +80,14 @@ async function syncLinkedAgenda(
     ]),
   };
 
-  const patch: Record<string, string> = {};
-  for (const [field, candidate] of Object.entries(candidates)) {
-    if (!String(event[field] ?? "").trim() && candidate) patch[field] = candidate;
+  const patch: Database["public"]["Tables"]["agenda_events"]["Update"] = {};
+  for (const [field, candidate] of Object.entries(candidates) as Array<
+    [keyof typeof candidates, string | null]
+  >) {
+    const current = event[field as keyof typeof event];
+    if (!String(current ?? "").trim() && candidate) {
+      (patch as Record<string, string>)[field] = candidate;
+    }
   }
 
   if (!Object.keys(patch).length) return true;

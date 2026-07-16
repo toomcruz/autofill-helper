@@ -1,5 +1,9 @@
 export type OfficialProcessKey =
-  "sepultamento" | "exumacao" | "ossario" | "translado" | "atualizacao_cadastral";
+  | "sepultamento"
+  | "exumacao"
+  | "ossario"
+  | "translado"
+  | "atualizacao_cadastral";
 
 export interface OfficialTemplateCatalogItem {
   id: string;

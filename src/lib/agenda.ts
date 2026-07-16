@@ -1,7 +1,12 @@
 export type AgendaType = "exumacao" | "velorio_sepultamento" | "exumacao_pss";
 
 export type AgendaStatus =
-  "agendado" | "confirmado" | "em_andamento" | "concluido" | "cancelado" | "pendente";
+  | "agendado"
+  | "confirmado"
+  | "em_andamento"
+  | "concluido"
+  | "cancelado"
+  | "pendente";
 
 export interface AgendaEvent {
   id: string;

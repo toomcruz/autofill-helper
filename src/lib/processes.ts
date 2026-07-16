@@ -1,5 +1,9 @@
 export type ProcessKey =
-  "sepultamento" | "exumacao" | "ossario" | "translado" | "atualizacao_cadastral";
+  | "sepultamento"
+  | "exumacao"
+  | "ossario"
+  | "translado"
+  | "atualizacao_cadastral";
 
 export interface ProcessExtraField {
   name: string;

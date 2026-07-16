@@ -235,7 +235,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     key: "hora_sepultamento",
     label: "Horário do sepultamento",
     entity: "atendimento",
-    aliases: ["horasep", "horario_sepultamento"],
+    aliases: ["horasep", "horaSep", "horario_sepultamento"],
     type: "time",
     processes: ["sepultamento"],
     validator: "time",

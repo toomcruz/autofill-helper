@@ -705,11 +705,29 @@ function AgendaDialog({
               onChange={(event) => onChange("registration_number", event.target.value)}
             />
           </Field>
-          <Field label="Serviço">
-            <Input
-              value={draft.service}
-              onChange={(event) => onChange("service", event.target.value)}
-            />
+          <Field label={exumation ? "Fase da exumação" : "Serviço"}>
+            {exumation ? (
+              <Select
+                value={draft.service || undefined}
+                onValueChange={(value) => onChange("service", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a fase" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXHUMATION_PHASES.map((phase) => (
+                    <SelectItem key={phase.value} value={phase.value}>
+                      {phase.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={draft.service}
+                onChange={(event) => onChange("service", event.target.value)}
+              />
+            )}
           </Field>
           <Field label="Localização">
             <Input

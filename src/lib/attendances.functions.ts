@@ -205,7 +205,7 @@ export const generateDocument = createServerFn({ method: "POST" })
 
     const { data: attendance } = await supabase
       .from("attendances")
-      .select("id, extracted_data, process")
+      .select("id, extracted_data, process, subprocess, subprocess_details")
       .eq("id", data.attendanceId)
       .single();
     if (!attendance) throw new Error("Atendimento não encontrado");
@@ -225,7 +225,25 @@ export const generateDocument = createServerFn({ method: "POST" })
     const buffer = await blob.arrayBuffer();
     const { fillDocx } = await import("./docx.server");
     const extracted = (attendance.extracted_data as Record<string, string>) ?? {};
-    const values = applyOfficialTemplateAliases(extracted, template.storage_path);
+    // Triagem rápida (Sepultamento): valores selecionados via botões são a
+    // fonte de verdade e sobrescrevem `extracted_data` para os campos que a
+    // triagem controla. Ver spec §8 e src/lib/triagem-sepultamento.ts.
+    let merged: Record<string, string> = extracted;
+    if (attendance.process === "sepultamento") {
+      const { buildTriagemOverrides } = await import("./triagem-sepultamento");
+      const details = (attendance.subprocess_details as Record<string, string>) ?? {};
+      const overrides = buildTriagemOverrides({
+        subprocess: attendance.subprocess ?? undefined,
+        data_agendada: details.data_agendada,
+        hora_sepultamento: details.hora_sepultamento,
+        sala_velorio: details.sala_velorio,
+        sem_velorio: (details.sem_velorio as "SIM" | "") || "",
+        placa_identificacao: details.placa_identificacao,
+        placa_confirmada: (details.placa_confirmada as "SIM" | "") || "",
+      });
+      merged = { ...extracted, ...overrides };
+    }
+    const values = applyOfficialTemplateAliases(merged, template.storage_path);
     const filled = fillDocx(buffer, values);
     // Wrap Uint8Array in a Blob so supabase-js uploads raw binary bytes.
     // Uploading a bare Uint8Array on the edge runtime can be serialized as

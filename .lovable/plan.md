@@ -1,64 +1,73 @@
-# Plano — Integração da nova arquitetura de extração e confirmação
+# Triagem acelerada por botões — Ordem de Sepultamento
 
-O escopo é grande demais para uma única entrega. Proponho executar em **incrementos verificáveis**, cada um com testes + typecheck + build antes de passar ao próximo. Sem deploy, sem publish.
+Reduzir a digitação da triagem transformando os campos-chave em botões, salvando as escolhas em `subprocess_details` (mesma estrutura já existente) e reaproveitando esses dados na geração do DOCX.
 
-## Estado atual (verificado)
+## Escopo (só o processo Sepultamento)
 
-- **Nova arquitetura já existe**: `src/lib/domain/*` (field-catalog canônico, expected-fields, template-payload, context-adapter, canonicalize, documents) e `src/lib/domain/vision/*` (types, document-types, validators, person-consolidation, role-inference, confidence). 186 testes passando.
-- **Arquitetura antiga em uso**: `src/lib/extraction/*` (schemas, field-catalog, aliases, validators), `src/lib/ai-extract.server.ts` (uma única chamada com todas as imagens juntas, retorna `Record<string,string>`), `src/routes/_authed.atendimento.$id.tsx` (431 linhas, inputs genéricos).
-- **A ponte ainda não existe**: `ai-extract` → `extraction/*` → `attendances.functions` → UI. É essa ponte que precisa ser trocada.
+Nenhuma outra jornada (Exumação, Ossário, Translado, Atualização Cadastral) é tocada.
 
-## Incrementos propostos
+## 1. UI — `src/routes/_authed.atendimento.novo.tsx`
 
-### Incremento 1 — Correção PPS/PSS + adaptador central de processo
-Escopo pequeno, alto valor, zero regressão.
-- Varrer código e templates buscando `PSS`, `referencia_pss`, `numero_pss` e corrigir para PPS onde o significado for "Exumação para Pronto Sepultamento".
-- Consolidar `src/lib/domain/context-adapter.ts` como único ponto que traduz nomes antigos de processo (`sepultamento` → `velorio_sepultamento`) e remover checagens manuais espalhadas.
-- Migration idempotente renomeando chaves legadas remanescentes em `extracted_data`.
-- Testes: 17 (context-adapter converte processos antigos) + 18 (nenhuma referência PSS).
+Nova seção "Triagem rápida" (só quando `processKey === "sepultamento"`), substituindo os inputs livres correspondentes, na ordem:
 
-### Incremento 2 — Extração por imagem (backend)
-Substituir `ai-extract.server.ts` pelo pipeline novo, mantendo a assinatura atual como wrapper de compatibilidade.
-- Novo `src/lib/vision/extract-image.server.ts`: uma chamada Gemini por imagem, schema Zod real usando os tipos de `domain/vision/types.ts`, retry único em JSON inválido, logs sem PII (apenas imageId/tipo/duração/contagens).
-- Novo `src/lib/vision/extract-batch.server.ts`: paraleliza N imagens com limite de concorrência, isola erros por imagem.
-- `ai-extract.server.ts` vira adaptador fino que chama o novo pipeline e reduz para o shape antigo enquanto a UI legada não migra.
-- Testes: 5 (independência), 6 (erro isolado), 7 (JSON vazio ≠ sucesso).
+1. **Local do sepultamento** — dois botões grandes: `QUADRA GERAL` / `JAZIGO`. Grava em `subprocess` (já existente). Ao selecionar, também grava em `extras`:
+   - `QUADRA GERAL` → `concessao="NAO"`, `quadra_geral_gaveta="SIM"`
+   - `JAZIGO` → `concessao="SIM"`, `quadra_geral_gaveta="NAO"`
+2. **Data do sepultamento** — botões `HOJE`, `AMANHÃ`, `+2 DIAS`, `OUTRA DATA` (Popover + shadcn Calendar). Preenche `data_agendada` em ISO e exibe abaixo em `DD/MM/AAAA`.
+3. **Horário do sepultamento** — botões `10:00 … 17:00`, seleção única, grava `hora_sepultamento`.
+4. **Sala do velório** — botões `A`,`B`,`C`,`D`,`E`,`F`,`SEM VELÓRIO`. Grava `sala_velorio` com a letra; `SEM VELÓRIO` grava string vazia + flag `sem_velorio="SIM"`.
+5. **Placa de identificação** — Input editável + botão `LER DO PRINT` (abre file input aceitando 1 imagem). Chama nova server fn `readPlacaFromImage` que reusa `extractFromImages` (`fields:["placa_identificacao"]`, contexto "Placa de identificação"). Mostra "Placa encontrada: XXXXX" + `CONFIRMAR`/`CORRIGIR`. Só grava em `placa_identificacao` após confirmar; se falhar, mantém edição manual. Não obrigatória.
 
-### Incremento 3 — Store de sessão + consolidação
-- `src/lib/vision/attendance-vision-store.ts` (Zustand ou reducer): imagens, pessoas consolidadas, campos canônicos, `confirmedByUser`, conflitos.
-- Consumir `person-consolidation` e `role-inference` já existentes.
-- Reprocessar/adicionar/remover imagem preserva confirmações (Fase 7 do briefing).
-- Persistir em `attendances.extracted_data.vision` (JSON), mantendo `extracted_data` plano para compatibilidade com a UI antiga durante a transição.
-- Testes: 8, 9, 10, 11.
+Botão destacado usa `variant="default"` quando selecionado, `variant="outline"` caso contrário.
 
-### Incremento 4 — Nova UI em etapas dentro de `_authed.atendimento.$id.tsx`
-Substitui a seção de inputs genéricos. Rota mantida, componentes novos em `src/components/vision/`:
-- `StepAnalyze`: grid de cards por imagem (miniatura, status, tipo, confiança, reprocessar/remover).
-- `StepConfirmPeople`: perguntas rápidas Sim/Não/Não tenho certeza + atalhos + união manual.
-- `StepConfirmFields`: seções humanas (Falecido, Responsável, Jazigo…) via `getExpectedFields`; rótulos humanos; obrigatórios primeiro.
-- `StepConflicts`: só campos com conflito, obrigatórios vazios, papéis não confirmados.
-- `StepGenerate`: lista documentos aplicáveis / prontos / bloqueados via `buildTemplatePayload`.
+### Validação de "Confirmar triagem"
 
-### Incremento 5 — Geração de documentos canônica
-- `attendances.functions.ts` `generateDocuments` passa a chamar `buildTemplatePayload` com dados canônicos + `confirmedByUser`.
-- Bloqueia documento com conflito não resolvido ou obrigatório vazio; status parcial quando "Gerar todos" mistura sucesso/erro; não marca `done` se houver falha.
-- Testes: 12, 13, 14, 15, 16.
+Antes de avançar para upload:
+- `subprocess` presente,
+- `data_agendada` presente,
+- `hora_sepultamento` presente,
+- `sala_velorio` OU `sem_velorio="SIM"` presente.
 
-### Incremento 6 — Depreciação de `src/lib/extraction/*`
-- Manter arquivos como reexports finos apontando para `src/lib/domain/*` (adaptador de compatibilidade), com `@deprecated` JSDoc.
-- Nenhuma nova regra em `extraction/*`.
-- Rodar testes 19 (agenda intacta) e 20 (modelos oficiais intactos).
+Placa não bloqueia. Mensagens via `toast.error`.
 
-## Preservação (checado a cada incremento)
-Auth, dashboard, agenda, sync agenda, slots exumação, instalação de modelos oficiais, geração DOCX, download, Supabase/RLS, uploads existentes, atendimentos salvos.
+## 2. Persistência
 
-## Validação por incremento
-`bunx vitest run` + `bunx tsc --noEmit` + `bun run build`. Lint apenas nos arquivos tocados, reportando novos vs herdados.
+Tudo já vive em `subprocess`/`subprocess_details` (colunas existentes em `attendances`). Nenhuma migration nova. Ao voltar ao atendimento (`_authed.atendimento.$id.tsx`), os valores continuam disponíveis via `att.subprocess_details`.
 
-## Decisões que preciso confirmar
+## 3. Integração com DOCX
 
-1. **Ritmo**: aprovar todo o roadmap agora e eu executo incremento a incremento reportando ao fim de cada um, OU aprovar apenas o Incremento 1 primeiro?
-2. **Persistência (Incremento 3)**: guardar o estado vision em `attendances.extracted_data.vision` (JSON dentro da tabela existente, sem migration) ou criar tabela filha `attendance_vision` vinculada por `attendance_id` com RLS?
-3. **Store cliente (Incremento 3)**: Zustand (novo dep) ou `useReducer` + Context (zero dep)?
+Em `src/lib/attendances.functions.ts` (generateDocument), ao montar o `data` do placeholder para `ordem-sepultamento`, priorizar valores de `subprocess_details` sobre `extracted_data` para as chaves-alvo:
 
-Confirme essas três respostas e eu começo pelo Incremento 1.
+- `sala_velorio`, `data_sepultamento` ← `data_agendada`, `horario_sepultamento` ← `hora_sepultamento`, `placa_identificacao` (só se confirmada).
+- Novos placeholders só se já existirem no modelo: `concessao`, `quadra_geral_gaveta`. Se o modelo não declara o placeholder, é ignorado silenciosamente (`nullGetter` já retorna `""`).
+
+Placeholders já existentes (ver `template-payload.ts` para `ordem-sepultamento`): `nomeFal, sala, dataSep, horaSep, placa`, etc. — mapear os novos `concessao` / `quadra_geral_gaveta` **apenas se o template oficial declarar**; senão fica no-op.
+
+## 4. Fonte/formatação DOCX
+
+Sem mudança de estilo automático — o `fillDocx` atual não reduz fonte. Apenas garantir `paragraphLoop: true` (já ativo) e `linebreaks: true` (já ativo) permitem quebra em nomes longos.
+
+## 5. Testes (`vitest`)
+
+Novo arquivo `src/lib/__tests__/triagem-sepultamento.test.ts` cobrindo helpers puros:
+
+- `applyLocalSepultamento("quadra_geral")` → `{ concessao:"NAO", quadra_geral_gaveta:"SIM" }`
+- `applyLocalSepultamento("jazigo")` → `{ concessao:"SIM", quadra_geral_gaveta:"NAO" }`
+- `computeQuickDate("hoje"|"amanha"|"+2")` retornam datas corretas
+- validação de triagem falha sem sala e sem `sem_velorio`
+- placa não confirmada não aparece no payload
+
+## 6. Arquivos alterados
+
+- `src/lib/triagem-sepultamento.ts` (novo) — helpers puros: `LOCAL_SEPULTAMENTO_MAP`, `computeQuickDate`, `HORARIOS`, `SALAS`, `validateTriagem`.
+- `src/lib/__tests__/triagem-sepultamento.test.ts` (novo).
+- `src/lib/vision/read-placa.functions.ts` (novo) — server fn `readPlacaFromImage(base64)` chamando `extractFromImages`.
+- `src/routes/_authed.atendimento.novo.tsx` — renderiza `<TriagemSepultamento/>` quando processo é sepultamento; oculta os campos livres equivalentes já existentes.
+- `src/lib/attendances.functions.ts` — merge `subprocess_details` no payload do modelo, sem sobrescrever campos já preenchidos manualmente na revisão.
+
+## 7. Restrições respeitadas
+
+- Sem alteração em autenticação, RLS, edge functions, ou outros modelos.
+- Sem nova tabela.
+- Sem publicação.
+- Ao final: `bun test`, `bun run typecheck`, `bun run build` (o harness roda automaticamente).

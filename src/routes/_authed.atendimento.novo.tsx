@@ -23,6 +23,14 @@ import { EXHUMATION_TIME_SLOTS } from "@/lib/domain/exhumation-slots";
 import { buildAttendanceContext } from "@/lib/domain/context-adapter";
 import { getRequiredDocuments } from "@/lib/domain/documents";
 import { getErrorMessage } from "@/lib/error-message";
+import { TriagemSepultamento } from "@/components/triagem-sepultamento";
+import { validateTriagemSepultamento } from "@/lib/triagem-sepultamento";
+
+const TRIAGEM_SEPULTAMENTO_KEYS = new Set([
+  "data_agendada",
+  "hora_sepultamento",
+  "sala_velorio",
+]);
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
   component: NewAttendance,
@@ -83,6 +91,12 @@ function NewAttendance() {
   function updateExtra(name: string, value: string) {
     setExtras((current) => ({ ...current, [name]: value }));
   }
+
+  function updateExtras(patch: Record<string, string>) {
+    setExtras((current) => ({ ...current, ...patch }));
+  }
+
+  const isSepultamento = processKey === "sepultamento";
 
   function hasScheduleWithoutDate(): boolean {
     if (!proc || !["sepultamento", "exumacao"].includes(proc.key)) return false;
@@ -240,28 +254,46 @@ function NewAttendance() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {proc.subprocessOptions && (
-              <div className="space-y-2">
-                <Label>{proc.subprocessLabel}</Label>
-                <div className="grid sm:grid-cols-3 gap-2">
-                  {proc.subprocessOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSubprocess(option.value)}
-                      className={cn(
-                        "p-3 rounded-md border text-sm text-center transition-colors hover:border-primary",
-                        subprocess === option.value && "border-primary bg-accent",
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+            {isSepultamento ? (
+              <TriagemSepultamento
+                subprocess={subprocess}
+                extras={extras}
+                onSubprocessChange={setSubprocess}
+                onExtrasChange={updateExtras}
+              />
+            ) : (
+              proc.subprocessOptions && (
+                <div className="space-y-2">
+                  <Label>{proc.subprocessLabel}</Label>
+                  <div className="grid sm:grid-cols-3 gap-2">
+                    {proc.subprocessOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSubprocess(option.value)}
+                        className={cn(
+                          "p-3 rounded-md border text-sm text-center transition-colors hover:border-primary",
+                          subprocess === option.value && "border-primary bg-accent",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
-            <ExtraFields fields={visibleExtraFields} values={extras} onChange={updateExtra} />
+            <ExtraFields
+              fields={
+                isSepultamento
+                  ? visibleExtraFields.filter((f) => !TRIAGEM_SEPULTAMENTO_KEYS.has(f.name))
+                  : visibleExtraFields
+              }
+              values={extras}
+              onChange={updateExtra}
+            />
+
 
             {previewedDocuments.length > 0 && (
               <div className="rounded-md border bg-muted/25 p-3 space-y-2">
@@ -297,7 +329,19 @@ function NewAttendance() {
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               <Button
-                onClick={() => setStep("upload")}
+                onClick={() => {
+                  if (isSepultamento) {
+                    const errs = validateTriagemSepultamento({
+                      subprocess,
+                      data_agendada: extras.data_agendada,
+                      hora_sepultamento: extras.hora_sepultamento,
+                      sala_velorio: extras.sala_velorio,
+                      sem_velorio: (extras.sem_velorio as "SIM" | "") || "",
+                    });
+                    if (errs.length) return toast.error(errs[0]);
+                  }
+                  setStep("upload");
+                }}
                 disabled={!!proc.subprocessOptions && !subprocess}
               >
                 Continuar <ArrowRight className="h-4 w-4 ml-1" />

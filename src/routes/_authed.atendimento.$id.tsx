@@ -138,10 +138,21 @@ function AttendanceDetail() {
   async function triggerExtract(autoGenerate = false) {
     setExtracting(true);
     try {
-      const result = await extractFn({ data: { attendanceId: id } });
+      // Novo pipeline (extração por imagem, consolidação, validações).
+      let extracted: Record<string, string> = {};
+      let usedFallback = false;
+      try {
+        const visionResult = await extractVisionFn({ data: { attendanceId: id } });
+        extracted = (visionResult?.data ?? {}) as Record<string, string>;
+      } catch (visionError: unknown) {
+        // Fallback automático: extrator legado.
+        usedFallback = true;
+        console.warn("[vision] fallback ativado:", getErrorMessage(visionError));
+        const legacy = await extractFn({ data: { attendanceId: id } });
+        extracted = (legacy?.data ?? {}) as Record<string, string>;
+      }
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
-      toast.success("Dados extraídos");
-      const extracted = (result?.data ?? {}) as Record<string, string>;
+      toast.success(usedFallback ? "Dados extraídos (modo legado)" : "Dados extraídos");
       setFields(extracted);
       if (autoGenerate && att) {
         const applicable = (templates ?? []).filter((template) =>

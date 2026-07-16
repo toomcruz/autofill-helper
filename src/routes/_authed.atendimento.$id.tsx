@@ -111,12 +111,39 @@ function AttendanceDetail() {
     return Array.from(fieldsSet).sort();
   }, [fields, applicableTemplates]);
 
-  async function triggerExtract() {
+  async function triggerExtract(autoGenerate = false) {
     setExtracting(true);
     try {
-      await extractFn({ data: { attendanceId: id } });
+      const result = await extractFn({ data: { attendanceId: id } });
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
       toast.success("Dados extraídos");
+      const extracted = (result?.data ?? {}) as Record<string, string>;
+      setFields(extracted);
+      if (autoGenerate && att) {
+        const applicable = (templates ?? []).filter((template) =>
+          isTemplateApplicable(template, {
+            process: att.process,
+            subprocess: att.subprocess,
+            subprocessDetails: (att.subprocess_details as Record<string, unknown>) ?? {},
+            extractedData: extracted,
+          }),
+        );
+        if (applicable.length) {
+          for (const template of applicable) {
+            setGeneratingId(template.id);
+            try {
+              await generateFn({ data: { attendanceId: id, templateId: template.id } });
+            } catch (error: unknown) {
+              toast.error(`${template.name}: ${getErrorMessage(error, "Falha ao gerar")}`);
+            }
+          }
+          setGeneratingId(null);
+          await supabase.from("attendances").update({ status: "done" }).eq("id", id);
+          await qc.invalidateQueries({ queryKey: ["generated", id] });
+          await qc.invalidateQueries({ queryKey: ["attendance", id] });
+          toast.success("Pacote gerado");
+        }
+      }
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Falha na extração"));
     } finally {
@@ -130,7 +157,7 @@ function AttendanceDetail() {
       !Object.keys(att.extracted_data ?? {}).length &&
       !extracting
     ) {
-      triggerExtract();
+      triggerExtract(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [att?.status]);
@@ -250,7 +277,7 @@ function AttendanceDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={triggerExtract}
+                onClick={() => triggerExtract(false)}
                 disabled={extracting}
                 className="gap-2"
               >

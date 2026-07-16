@@ -96,7 +96,9 @@ function removeTinyInkArtifacts(zip: PizZip): void {
     });
   zip.file(DOCUMENT_RELS_PATH, cleanedRelationships);
 
-  const removedPackagePaths = removedTargets.map((target) => normalizePackageTarget("word", target));
+  const removedPackagePaths = removedTargets.map((target) =>
+    normalizePackageTarget("word", target),
+  );
   for (const path of removedPackagePaths) zip.remove(path);
 
   const contentTypesFile = zip.file(CONTENT_TYPES_PATH);

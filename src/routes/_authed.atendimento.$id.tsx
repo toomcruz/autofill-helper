@@ -341,18 +341,57 @@ function AttendanceDetail() {
                 </p>
               )}
               <div className="grid sm:grid-cols-2 gap-3">
-                {allFields.map((key) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={key} className="text-xs">
-                      {key}
-                    </Label>
-                    <Input
-                      id={key}
-                      value={fields[key] ?? ""}
-                      onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
-                    />
-                  </div>
-                ))}
+                {allFields.map((key) => {
+                  const m = fieldMeta[key];
+                  const band = m?.hasConflict
+                    ? "conflito"
+                    : m?.confirmedByUser
+                      ? "confirmado"
+                      : m
+                        ? m.confidence >= 0.9
+                          ? "alta"
+                          : m.confidence >= 0.75
+                            ? "revisar"
+                            : "baixa"
+                        : null;
+                  return (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Label htmlFor={key} className="text-xs">
+                          {key}
+                        </Label>
+                        {band === "conflito" && (
+                          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5" /> conflito
+                          </Badge>
+                        )}
+                        {band === "confirmado" && (
+                          <Badge variant="outline" className="h-4 text-[10px] gap-1 border-emerald-500 text-emerald-600">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> confirmado
+                          </Badge>
+                        )}
+                        {band === "alta" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-emerald-500 text-emerald-600">alta</Badge>
+                        )}
+                        {band === "revisar" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">revisar</Badge>
+                        )}
+                        {band === "baixa" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-destructive text-destructive">baixa</Badge>
+                        )}
+                        {m?.source && (
+                          <span className="text-[10px] text-muted-foreground">via {String(m.source).replace(/_/g, " ")}</span>
+                        )}
+                      </div>
+                      <Input
+                        id={key}
+                        value={fields[key] ?? ""}
+                        onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
+                        className={m?.hasConflict ? "border-destructive" : undefined}
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <Button

@@ -137,7 +137,6 @@ describe("getRequiredDocuments — exumação execução", () => {
       local_sepultamento_tipo: "quadra_geral",
       resultado_exumacao: "ossos_liberados",
       destino_pos_exumacao: "ossario",
-      // @ts-expect-error renovação não é modalidade válida em Exumação
       modalidade_ossario: "renovacao",
     });
     expect(s).toEqual([]);

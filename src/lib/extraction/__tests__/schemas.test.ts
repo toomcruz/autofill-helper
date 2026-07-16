@@ -62,14 +62,14 @@ describe("parseAIResponse", () => {
 
   it("rejeita entityType fora do enum", () => {
     const bad = structuredClone(validPayload);
-    bad.fields[0].entityType = "chefe" as unknown as typeof bad.fields[0].entityType;
+    (bad.fields[0] as Record<string, unknown>).entityType = "chefe";
     const r = parseAIResponse(bad);
     expect(r.ok).toBe(false);
   });
 
   it("rejeita status fora do enum", () => {
     const bad = structuredClone(validPayload);
-    bad.fields[0].status = "aprovado" as unknown as typeof bad.fields[0].status;
+    (bad.fields[0] as Record<string, unknown>).status = "aprovado";
     const r = parseAIResponse(bad);
     expect(r.ok).toBe(false);
   });

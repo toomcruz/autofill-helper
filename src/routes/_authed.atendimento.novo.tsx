@@ -23,6 +23,14 @@ import { EXHUMATION_TIME_SLOTS } from "@/lib/domain/exhumation-slots";
 import { buildAttendanceContext } from "@/lib/domain/context-adapter";
 import { getRequiredDocuments } from "@/lib/domain/documents";
 import { getErrorMessage } from "@/lib/error-message";
+import { TriagemSepultamento } from "@/components/triagem-sepultamento";
+import { validateTriagemSepultamento } from "@/lib/triagem-sepultamento";
+
+const TRIAGEM_SEPULTAMENTO_KEYS = new Set([
+  "data_agendada",
+  "hora_sepultamento",
+  "sala_velorio",
+]);
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
   component: NewAttendance,
@@ -83,6 +91,12 @@ function NewAttendance() {
   function updateExtra(name: string, value: string) {
     setExtras((current) => ({ ...current, [name]: value }));
   }
+
+  function updateExtras(patch: Record<string, string>) {
+    setExtras((current) => ({ ...current, ...patch }));
+  }
+
+  const isSepultamento = processKey === "sepultamento";
 
   function hasScheduleWithoutDate(): boolean {
     if (!proc || !["sepultamento", "exumacao"].includes(proc.key)) return false;

@@ -254,28 +254,46 @@ function NewAttendance() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {proc.subprocessOptions && (
-              <div className="space-y-2">
-                <Label>{proc.subprocessLabel}</Label>
-                <div className="grid sm:grid-cols-3 gap-2">
-                  {proc.subprocessOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSubprocess(option.value)}
-                      className={cn(
-                        "p-3 rounded-md border text-sm text-center transition-colors hover:border-primary",
-                        subprocess === option.value && "border-primary bg-accent",
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+            {isSepultamento ? (
+              <TriagemSepultamento
+                subprocess={subprocess}
+                extras={extras}
+                onSubprocessChange={setSubprocess}
+                onExtrasChange={updateExtras}
+              />
+            ) : (
+              proc.subprocessOptions && (
+                <div className="space-y-2">
+                  <Label>{proc.subprocessLabel}</Label>
+                  <div className="grid sm:grid-cols-3 gap-2">
+                    {proc.subprocessOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSubprocess(option.value)}
+                        className={cn(
+                          "p-3 rounded-md border text-sm text-center transition-colors hover:border-primary",
+                          subprocess === option.value && "border-primary bg-accent",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
-            <ExtraFields fields={visibleExtraFields} values={extras} onChange={updateExtra} />
+            <ExtraFields
+              fields={
+                isSepultamento
+                  ? visibleExtraFields.filter((f) => !TRIAGEM_SEPULTAMENTO_KEYS.has(f.name))
+                  : visibleExtraFields
+              }
+              values={extras}
+              onChange={updateExtra}
+            />
+
 
             {previewedDocuments.length > 0 && (
               <div className="rounded-md border bg-muted/25 p-3 space-y-2">

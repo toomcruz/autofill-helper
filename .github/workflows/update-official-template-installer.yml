@@ -1,3 +1,4 @@
+# Temporary one-shot workflow for PR #8.
 name: Update official template installer
 
 on:

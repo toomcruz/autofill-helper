@@ -114,6 +114,13 @@ function NewAttendance() {
     if (hasScheduleWithoutDate()) {
       return toast.error("Informe a data para adicionar este atendimento à agenda.");
     }
+    const ppsErrors = validatePpsSchedule({
+      processKey: proc.key,
+      tipoAgendaExumacao: extras.tipo_agenda_exumacao,
+      data_agendada: extras.data_agendada,
+      hora_agendamento: extras.hora_agendamento,
+    });
+    if (ppsErrors.length) return toast.error(ppsErrors[0]);
 
     setSubmitting(true);
     try {

@@ -16,10 +16,12 @@ import {
 import { PROCESSES, getProcess, type ProcessExtraField } from "@/lib/processes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CalendarDays, Loader2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, FileText, Loader2, Upload, X } from "lucide-react";
 import type { AgendaType } from "@/lib/agenda";
 import { resolveAgendaType, shouldCreateAgendaEvent, validatePpsSchedule } from "@/lib/agenda-sync";
 import { EXHUMATION_TIME_SLOTS } from "@/lib/domain/exhumation-slots";
+import { buildAttendanceContext } from "@/lib/domain/context-adapter";
+import { getRequiredDocuments } from "@/lib/domain/documents";
 import { getErrorMessage } from "@/lib/error-message";
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({

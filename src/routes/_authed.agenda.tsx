@@ -117,6 +117,14 @@ function OperationalAgenda() {
     };
   }, [events]);
 
+  const exhumationSlots = useMemo(
+    () =>
+      agendaType === "exumacao" || agendaType === "exumacao_pss"
+        ? computeExhumationSlotUsage(events ?? [])
+        : null,
+    [events, agendaType],
+  );
+
   function changeType(value: string) {
     const next = value as AgendaType;
     setAgendaType(next);

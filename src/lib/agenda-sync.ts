@@ -1,4 +1,9 @@
 import type { AgendaType } from "@/lib/agenda";
+import {
+  EXHUMATION_TIME_SLOTS,
+  isExhumationTimeSlot,
+  isExhumationWorkingDay,
+} from "@/lib/domain/exhumation-slots";
 
 /**
  * Pure helpers for the agenda linkage flow.

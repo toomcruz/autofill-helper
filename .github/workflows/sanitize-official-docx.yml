@@ -1,0 +1,114 @@
+name: Sanitize official DOCX templates
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sanitize:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/sanitize-official-docx-templates'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Install LibreOffice Writer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer
+
+      - name: Re-save affected official templates
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/docx-original/sepultamento /tmp/docx-original/exumacao
+          mkdir -p /tmp/docx-sanitized/sepultamento /tmp/docx-sanitized/exumacao
+
+          cp public/templates/official/sepultamento/ordem-sepultamento.docx \
+            /tmp/docx-original/sepultamento/ordem-sepultamento.docx
+          cp public/templates/official/exumacao/ordem-exumacao.docx \
+            /tmp/docx-original/exumacao/ordem-exumacao.docx
+
+          libreoffice --headless --convert-to 'docx:Office Open XML Text' \
+            --outdir /tmp/docx-sanitized/sepultamento \
+            /tmp/docx-original/sepultamento/ordem-sepultamento.docx
+
+          libreoffice --headless --convert-to 'docx:Office Open XML Text' \
+            --outdir /tmp/docx-sanitized/exumacao \
+            /tmp/docx-original/exumacao/ordem-exumacao.docx
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import re
+          import zipfile
+          from pathlib import Path
+
+          files = {
+              "sepultamento/ordem-sepultamento.docx": Path(
+                  "/tmp/docx-sanitized/sepultamento/ordem-sepultamento.docx"
+              ),
+              "exumacao/ordem-exumacao.docx": Path(
+                  "/tmp/docx-sanitized/exumacao/ordem-exumacao.docx"
+              ),
+          }
+
+          original_root = Path("/tmp/docx-original")
+          official_root = Path("public/templates/official")
+
+          def placeholders(path: Path) -> list[str]:
+              xml = []
+              with zipfile.ZipFile(path) as archive:
+                  for name in archive.namelist():
+                      if name.startswith("word/") and name.endswith(".xml"):
+                          xml.append(archive.read(name).decode("utf-8", errors="ignore"))
+              text = re.sub(r"<[^>]+>", "", "\n".join(xml))
+              matches = re.findall(r"\{\{?\s*[A-Za-z0-9_]+\s*\}?\}", text)
+              return sorted({match.replace("{", "").replace("}", "").strip() for match in matches})
+
+          for relative, sanitized in files.items():
+              original = original_root / relative
+              if placeholders(original) != placeholders(sanitized):
+                  raise SystemExit(f"Placeholders changed while sanitizing {relative}")
+              (official_root / relative).write_bytes(sanitized.read_bytes())
+
+          catalog_path = official_root / "catalogo-modelos.json"
+          catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+          by_file = {item["arquivo"]: item for item in catalog}
+
+          for relative in files:
+              data = (official_root / relative).read_bytes()
+              by_file[relative]["tamanhoBytes"] = len(data)
+              by_file[relative]["sha256"] = hashlib.sha256(data).hexdigest()
+
+          catalog_path.write_text(
+              json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Commit sanitized templates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            public/templates/official/sepultamento/ordem-sepultamento.docx \
+            public/templates/official/exumacao/ordem-exumacao.docx \
+            public/templates/official/catalogo-modelos.json
+
+          if git diff --cached --quiet; then
+            echo "Templates already sanitized."
+            exit 0
+          fi
+
+          git commit -m "Sanitize official Word templates [skip ci]"
+          git push origin "HEAD:${{ github.head_ref || github.ref_name }}"

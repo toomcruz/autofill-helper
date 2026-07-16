@@ -41,10 +41,24 @@ function NewAttendance() {
   const [submitting, setSubmitting] = useState(false);
 
   const proc = getProcess(processKey);
-  const visibleExtraFields =
+  const isPps =
+    processKey === "exumacao" && extras.tipo_agenda_exumacao === "exumacao_pss";
+  const visibleExtraFields = (
     proc?.extraFields?.filter(
       (field) => !field.showWhen || extras[field.showWhen.field] === field.showWhen.equals,
-    ) ?? [];
+    ) ?? []
+  ).map<ProcessExtraField>((field) => {
+    // PPS restringe o horário aos 3 slots fixos (08:30, 09:00, 09:30).
+    if (isPps && field.name === "hora_agendamento") {
+      return {
+        ...field,
+        type: "select",
+        options: EXHUMATION_TIME_SLOTS.map((slot) => ({ value: slot, label: slot })),
+        description: "Exumação PSS: apenas 08:30, 09:00 ou 09:30.",
+      };
+    }
+    return field;
+  });
 
   function addFiles(list: FileList | null) {
     if (!list) return;

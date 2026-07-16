@@ -1,4 +1,4 @@
-name: Apply official template installer update
+name: Validate
 
 on:
   pull_request:
@@ -6,18 +6,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update-installer:
+  format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -27,24 +25,108 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Apply installer update
-        run: python3 scripts/apply-official-template-installer-update.py
-
-      - name: Format and lint route
+      - name: Check formatting
         run: |
-          bunx prettier --write src/routes/_authed.modelos.tsx
-          bunx eslint src/routes/_authed.modelos.tsx
+          bunx prettier --check \
+            .github/workflows/validate.yml \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
+            src/lib/agenda.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/error-message.ts \
+            src/lib/official-templates.ts \
+            src/lib/processes.ts \
+            'src/routes/_authed.agenda.tsx' \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/routes/_authed.atendimento.novo.tsx \
+            src/routes/_authed.modelos.tsx \
+            src/routes/_authed.tsx
 
-      - name: Commit installer update
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript
+        run: bunx tsc --noEmit
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Tests
+        run: bunx vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint changed files
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/_authed.modelos.tsx
-
-          if git diff --cached --quiet; then
-            echo "Installer already updated."
-            exit 0
-          fi
-
-          git commit -m "Refresh existing official templates in Supabase [skip ci]"
-          git push origin "HEAD:${{ github.head_ref }}"
+          bunx eslint \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
+            src/lib/agenda.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/error-message.ts \
+            src/lib/official-templates.ts \
+            src/lib/processes.ts \
+            'src/routes/_authed.agenda.tsx' \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/routes/_authed.atendimento.novo.tsx \
+            src/routes/_authed.modelos.tsx \
+            src/routes/_authed.tsx

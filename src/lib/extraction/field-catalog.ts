@@ -145,7 +145,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     key: "inscricao_gs",
     label: "Inscrição GS",
     entity: "atendimento",
-    aliases: ["inscricaogs", "inscrgs", "numero_inscricao", "numerogs"],
+    aliases: ["inscricaogs", "inscrgs", "inscrGS", "numero_inscricao", "numerogs"],
     type: "text",
     processes: ["*"],
     validator: "preserve",

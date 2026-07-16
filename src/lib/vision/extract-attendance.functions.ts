@@ -90,9 +90,34 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
       previousState,
     });
 
-    const nextExtracted = {
-      ...(rawExtracted as Record<string, unknown>),
+    // Falha total: nenhum campo/pessoa extraído em nenhuma imagem → deixa
+    // que o chamador acione o fallback legado.
+    const hadAnyOutput =
+      state.persons.length > 0 || Object.keys(state.rawByImage).length > 0;
+    if (!hadAnyOutput) {
+      throw new Error(
+        errors[0]?.error
+          ? `Pipeline por imagem falhou: ${errors[0].error}`
+          : "Pipeline por imagem não retornou dados",
+      );
+    }
+
+    const { flattenVisionState } = await import("./flatten-vision");
+    const { flat, meta } = flattenVisionState(state);
+
+    // Preserva chaves já confirmadas manualmente em extracted_data (que não
+    // passam pelo _vision) e escreve novos campos planos por cima.
+    const previousFlat = Object.fromEntries(
+      Object.entries(rawExtracted).filter(
+        ([k, v]) => k !== "_vision" && typeof v === "string",
+      ),
+    ) as Record<string, string>;
+
+    const nextExtracted: Record<string, unknown> = {
+      ...previousFlat,
+      ...flat,
       _vision: state,
+      _visionMeta: meta,
     };
 
     const { error: saveError } = await supabase
@@ -101,5 +126,16 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
       .eq("id", data.attendanceId);
     if (saveError) throw new Error(saveError.message);
 
-    return { state, errors };
+    // Sincronização com agenda (mesmo comportamento do fluxo legado).
+    try {
+      const { syncLinkedAgenda } = await import("@/lib/attendances.functions");
+      await syncLinkedAgenda(supabase, data.attendanceId, {
+        ...previousFlat,
+        ...flat,
+      });
+    } catch {
+      // não bloqueia extração
+    }
+
+    return { data: flat, meta, state, errors };
   });

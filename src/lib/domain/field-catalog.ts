@@ -685,11 +685,13 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     sensitive: false,
   },
   {
-    canonicalKey: "referencia_pss",
-    label: "Referência PSS",
+    canonicalKey: "referencia_pps",
+    label: "Referência PPS",
     section: "exumacao",
     dataType: "identifier",
-    aliases: ["numeropss", "referenciapss"],
+    // PPS = Exumação para Pronto Sepultamento. Aliases legados PSS
+    // preservados para dados já salvos em atendimentos antigos.
+    aliases: ["referencia_pss", "numeropps", "numeropss", "referenciapps", "referenciapss", "numero_pps", "numero_pss"],
     applicableProcesses: ["exumacao"],
     applicableDocuments: [],
     visibleWhen: (c) => c.process === "exumacao",

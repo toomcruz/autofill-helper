@@ -97,7 +97,7 @@ function NewAttendance() {
             "local_sepultamento",
             "funeraria",
           ]
-        : ["hora_agendamento", "localizacao", "referencia_pss"];
+        : ["hora_agendamento", "localizacao", "referencia_pps", "referencia_pss"];
     return scheduleKeys.some((key) => extras[key]?.trim()) && !extras.data_agendada?.trim();
   }
 
@@ -123,7 +123,10 @@ function NewAttendance() {
       burial_time: proc.key === "sepultamento" ? extras.hora_sepultamento || null : null,
       burial_location: proc.key === "sepultamento" ? extras.local_sepultamento || null : null,
       funeral_home: proc.key === "sepultamento" ? extras.funeraria || null : null,
-      pss_reference: agendaType === "exumacao_pss" ? extras.referencia_pss || null : null,
+      pss_reference:
+        agendaType === "exumacao_pss"
+          ? extras.referencia_pps || extras.referencia_pss || null
+          : null,
       status: "agendado",
       notes: notes || null,
     });

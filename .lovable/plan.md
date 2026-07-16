@@ -1,80 +1,64 @@
-# Assistente "Confirmar pessoas e informações"
+# Plano — Integração da nova arquitetura de extração e confirmação
 
-Escopo grande (25 seções, 30 testes). Para minimizar risco de quebrar geração de documentos e agenda (que estão fora do escopo), proponho **6 fases incrementais**. Cada fase entrega valor isolado, com testes verdes antes de avançar.
+O escopo é grande demais para uma única entrega. Proponho executar em **incrementos verificáveis**, cada um com testes + typecheck + build antes de passar ao próximo. Sem deploy, sem publish.
 
-## Restrições respeitadas (todas)
+## Estado atual (verificado)
 
-- Não altero atendimento, agendas, regras de documentos, PDF/Word.
-- Sem deploy, sem publicar, sem Prettier global.
-- Testes existentes preservados.
-- Dados vivem apenas no atendimento atual (sem cadastro permanente de pessoa).
-- Logs sem PII (só imageId, tipo, contagem, duração, status, hash parcial).
+- **Nova arquitetura já existe**: `src/lib/domain/*` (field-catalog canônico, expected-fields, template-payload, context-adapter, canonicalize, documents) e `src/lib/domain/vision/*` (types, document-types, validators, person-consolidation, role-inference, confidence). 186 testes passando.
+- **Arquitetura antiga em uso**: `src/lib/extraction/*` (schemas, field-catalog, aliases, validators), `src/lib/ai-extract.server.ts` (uma única chamada com todas as imagens juntas, retorna `Record<string,string>`), `src/routes/_authed.atendimento.$id.tsx` (431 linhas, inputs genéricos).
+- **A ponte ainda não existe**: `ai-extract` → `extraction/*` → `attendances.functions` → UI. É essa ponte que precisa ser trocada.
 
-## Fase 1 — Domínio puro (sem UI, sem IA)
+## Incrementos propostos
 
-Arquivos novos em `src/lib/domain/vision/`:
+### Incremento 1 — Correção PPS/PSS + adaptador central de processo
+Escopo pequeno, alto valor, zero regressão.
+- Varrer código e templates buscando `PSS`, `referencia_pss`, `numero_pss` e corrigir para PPS onde o significado for "Exumação para Pronto Sepultamento".
+- Consolidar `src/lib/domain/context-adapter.ts` como único ponto que traduz nomes antigos de processo (`sepultamento` → `velorio_sepultamento`) e remover checagens manuais espalhadas.
+- Migration idempotente renomeando chaves legadas remanescentes em `extracted_data`.
+- Testes: 17 (context-adapter converte processos antigos) + 18 (nenhuma referência PSS).
 
-- `types.ts` — `ImageRecord`, `ExtractedPerson`, `RoleCandidate`, `ImageExtractionResult`, `ConfirmedField`, status enum.
-- `document-types.ts` — enum de tipos de documento + `expectedRolesForProcess(process)`.
-- `validators.ts` — CPF (11 dígitos + DV + rejeita repetidos), data ISO, telefone, CEP, email, HH:mm, preservação de zeros.
-- `person-consolidation.ts` — mescla por CPF → RG → nome+nascimento → nome+telefone → nome+endereço → similaridade forte. Nunca funde só por nome parecido.
-- `role-inference.ts` — regras determinísticas: declarante ≠ responsável, concessionário exige evidência específica, PPS mantém dois falecidos separados.
-- `confidence.ts` — cálculo agregando rótulo/tipo/consistência/repetição/validação/conflito.
-- `__tests__/` — cobre testes 1-10, 16-18 (puros, sem UI/IA).
+### Incremento 2 — Extração por imagem (backend)
+Substituir `ai-extract.server.ts` pelo pipeline novo, mantendo a assinatura atual como wrapper de compatibilidade.
+- Novo `src/lib/vision/extract-image.server.ts`: uma chamada Gemini por imagem, schema Zod real usando os tipos de `domain/vision/types.ts`, retry único em JSON inválido, logs sem PII (apenas imageId/tipo/duração/contagens).
+- Novo `src/lib/vision/extract-batch.server.ts`: paraleliza N imagens com limite de concorrência, isola erros por imagem.
+- `ai-extract.server.ts` vira adaptador fino que chama o novo pipeline e reduz para o shape antigo enquanto a UI legada não migra.
+- Testes: 5 (independência), 6 (erro isolado), 7 (JSON vazio ≠ sucesso).
 
-## Fase 2 — Schema Zod e cliente IA por imagem
+### Incremento 3 — Store de sessão + consolidação
+- `src/lib/vision/attendance-vision-store.ts` (Zustand ou reducer): imagens, pessoas consolidadas, campos canônicos, `confirmedByUser`, conflitos.
+- Consumir `person-consolidation` e `role-inference` já existentes.
+- Reprocessar/adicionar/remover imagem preserva confirmações (Fase 7 do briefing).
+- Persistir em `attendances.extracted_data.vision` (JSON), mantendo `extracted_data` plano para compatibilidade com a UI antiga durante a transição.
+- Testes: 8, 9, 10, 11.
 
-- `src/lib/domain/vision/schema.ts` — Zod para `ImageExtractionResult` com retry único de parse.
-- `src/lib/vision/classify-and-extract.functions.ts` — server function `createServerFn` que recebe uma imagem (base64 + mime), chama Lovable AI Gateway (`google/gemini-3-flash-preview`) com prompt que espera schema estrito, valida com Zod. Se inválido: 1 retry, senão retorna erro daquela imagem.
-- Logging server-side: só imageId, documentType, duração, status. Sem PII, sem base64, sem resposta bruta.
-- Testes de schema (JSON inválido não retorna sucesso vazio, teste 24).
+### Incremento 4 — Nova UI em etapas dentro de `_authed.atendimento.$id.tsx`
+Substitui a seção de inputs genéricos. Rota mantida, componentes novos em `src/components/vision/`:
+- `StepAnalyze`: grid de cards por imagem (miniatura, status, tipo, confiança, reprocessar/remover).
+- `StepConfirmPeople`: perguntas rápidas Sim/Não/Não tenho certeza + atalhos + união manual.
+- `StepConfirmFields`: seções humanas (Falecido, Responsável, Jazigo…) via `getExpectedFields`; rótulos humanos; obrigatórios primeiro.
+- `StepConflicts`: só campos com conflito, obrigatórios vazios, papéis não confirmados.
+- `StepGenerate`: lista documentos aplicáveis / prontos / bloqueados via `buildTemplatePayload`.
 
-## Fase 3 — Store do atendimento (session state)
+### Incremento 5 — Geração de documentos canônica
+- `attendances.functions.ts` `generateDocuments` passa a chamar `buildTemplatePayload` com dados canônicos + `confirmedByUser`.
+- Bloqueia documento com conflito não resolvido ou obrigatório vazio; status parcial quando "Gerar todos" mistura sucesso/erro; não marca `done` se houver falha.
+- Testes: 12, 13, 14, 15, 16.
 
-`src/lib/vision/attendance-vision-store.ts` (Zustand ou reducer em contexto):
+### Incremento 6 — Depreciação de `src/lib/extraction/*`
+- Manter arquivos como reexports finos apontando para `src/lib/domain/*` (adaptador de compatibilidade), com `@deprecated` JSDoc.
+- Nenhuma nova regra em `extraction/*`.
+- Rodar testes 19 (agenda intacta) e 20 (modelos oficiais intactos).
 
-- `images: ImageRecord[]`, `persons: ExtractedPerson[]`, `fields: ConfirmedField[]`.
-- Ações: `addImages`, `reprocessImage`, `removeImage`, `mergePersons`, `splitPersons`, `answerRole`, `confirmField`, `confirmBatch`.
-- Preserva `confirmedByUser: true` em reprocess/add/remove.
-- Remove órfãos automáticos, mantém confirmados manuais mesmo perdendo fonte (com aviso).
-- Testes 13, 20-23, 28-29.
+## Preservação (checado a cada incremento)
+Auth, dashboard, agenda, sync agenda, slots exumação, instalação de modelos oficiais, geração DOCX, download, Supabase/RLS, uploads existentes, atendimentos salvos.
 
-## Fase 4 — UI da etapa "Analisar documentos" (Etapa 1)
+## Validação por incremento
+`bunx vitest run` + `bunx tsc --noEmit` + `bun run build`. Lint apenas nos arquivos tocados, reportando novos vs herdados.
 
-Componente `AnalyzeDocumentsStep`:
+## Decisões que preciso confirmar
 
-- Grid de cards por imagem: thumbnail, status, tipo detectado, confiança, erro, botões reprocessar/remover/visualizar.
-- Barra "6 de 8 documentos concluídos".
-- Processamento paralelo com limite; erro em uma não bloqueia demais.
-- Botão "Adicionar imagens" e "Reprocessar imagens com erro".
+1. **Ritmo**: aprovar todo o roadmap agora e eu executo incremento a incremento reportando ao fim de cada um, OU aprovar apenas o Incremento 1 primeiro?
+2. **Persistência (Incremento 3)**: guardar o estado vision em `attendances.extracted_data.vision` (JSON dentro da tabela existente, sem migration) ou criar tabela filha `attendance_vision` vinculada por `attendance_id` com RLS?
+3. **Store cliente (Incremento 3)**: Zustand (novo dep) ou `useReducer` + Context (zero dep)?
 
-## Fase 5 — UI "Confirmar pessoas" (Etapa 2) — coração da UX
-
-Componente `ConfirmPersonsWizard`:
-
-- Pergunta uma-a-uma para papéis esperados do processo atual (`expectedRolesForProcess`).
-- Botões grandes: Sim / Não / Não tenho certeza. Atalhos teclado 1/2/3.
-- Ao responder Não: mostra outros candidatos + input livre + "não encontrado".
-- Card de fonte: "Certidão de óbito", "Confiança: Alta", botão "Ver documento" que abre a imagem.
-- Diálogo de unificação: "Esses registros representam a mesma pessoa?" [Sim, unir] [Não, manter separados].
-- Confirmação em lote quando alta confiança e sem conflito ("Confirmar tudo" / "Revisar uma por uma").
-
-## Fase 6 — Etapas 3, 4, 5 + integração
-
-- Etapa 3 `ConfirmLocationStep`: inscrição/livro/folha/quadra/rua/terreno/gaveta com "Confirmar tudo" e resolução de conflitos ("Qual valor utilizar?").
-- Etapa 4 `ReviewPendingStep`: só conflitos, inválidos, obrigatórios ausentes, papéis não confirmados.
-- Etapa 5 `ReadySummaryStep`: resumo final → prossegue para geração (não altero geração).
-- Rota nova ou etapa dentro do atendimento existente (a definir — ver pergunta abaixo).
-
-## Testes
-
-Suíte nova `src/lib/domain/vision/__tests__/` + `src/lib/vision/__tests__/` cobrindo os 30 casos listados. Testes de UI de wizard com Testing Library nos cenários 11, 12, 14, 15, 27, 30.
-
-## Validações finais
-
-`bunx vitest run` + `bunx tsgo --noEmit` + `bun run build` + ESLint só nos arquivos alterados.
-
-## Perguntas antes de começar
-
-1. **Onde plugar o wizard?** (a) Substituir a tela atual de "Dados Extraídos" em `_authed.atendimento.novo`; (b) Nova rota `/atendimento/:id/confirmar`; (c) Modal/drawer dentro da tela atual.
-2. **Confirmar Fase 1 primeiro** e mostrar testes verdes antes de tocar em UI, ou **executar Fases 1+2+3 em sequência** antes de te mostrar a UI?
+Confirme essas três respostas e eu começo pelo Incremento 1.

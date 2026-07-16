@@ -59,9 +59,7 @@ export const Route = createFileRoute("/_authed/agenda")({
   component: OperationalAgenda,
 });
 
-// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any;
+const db = supabase;
 
 function todayIso(): string {
   const now = new Date();

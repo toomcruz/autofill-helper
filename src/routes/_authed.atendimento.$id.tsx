@@ -90,7 +90,26 @@ function AttendanceDetail() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (att?.extracted_data) setFields(att.extracted_data as Record<string, string>);
+    if (att?.extracted_data) {
+      const raw = att.extracted_data as Record<string, unknown>;
+      const flat: Record<string, string> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        if (k.startsWith("_")) continue;
+        if (typeof v === "string") flat[k] = v;
+      }
+      setFields(flat);
+    }
+  }, [att?.extracted_data]);
+
+  // Metadados de confiança/conflito derivados do estado de visão salvo.
+  const fieldMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
+    const raw = att?.extracted_data as Record<string, unknown> | undefined;
+    if (!raw) return {};
+    const savedMeta = raw._visionMeta as Record<string, FlatFieldMeta> | undefined;
+    if (savedMeta) return savedMeta;
+    const state = raw._vision as VisionState | undefined;
+    if (!state) return {};
+    return flattenVisionState(state).meta;
   }, [att?.extracted_data]);
 
   const applicableTemplates = useMemo(() => {

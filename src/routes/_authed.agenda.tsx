@@ -54,6 +54,8 @@ import {
   type AgendaStatus,
   type AgendaType,
 } from "@/lib/agenda";
+import { computeExhumationSlotUsage } from "@/lib/agenda-slots";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/agenda")({
   component: OperationalAgenda,
@@ -114,6 +116,14 @@ function OperationalAgenda() {
       completed: list.filter((event) => event.status === "concluido").length,
     };
   }, [events]);
+
+  const exhumationSlots = useMemo(
+    () =>
+      agendaType === "exumacao" || agendaType === "exumacao_pss"
+        ? computeExhumationSlotUsage(events ?? [])
+        : null,
+    [events, agendaType],
+  );
 
   function changeType(value: string) {
     const next = value as AgendaType;
@@ -296,6 +306,33 @@ function OperationalAgenda() {
             <SummaryCard label="Pendentes" value={counters.pending} />
             <SummaryCard label="Concluídos" value={counters.completed} />
           </div>
+
+          {exhumationSlots && (
+            <div className="rounded-lg border bg-muted/25 p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Clock3 className="h-3.5 w-3.5" />
+                Vagas do dia (segunda a sexta · 08:30 / 09:00 / 09:30)
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {exhumationSlots.map((slot) => (
+                  <div
+                    key={slot.slot}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-sm",
+                      slot.occupied
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
+                        : "border-emerald-300 bg-emerald-50 text-emerald-900",
+                    )}
+                  >
+                    <div className="font-semibold">{slot.slot}</div>
+                    <div className="text-xs">
+                      {slot.occupied ? `Ocupado (${slot.events.length})` : "Livre"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

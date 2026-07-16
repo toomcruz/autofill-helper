@@ -68,6 +68,16 @@ describe("docx official templates", () => {
     ).not.toThrow();
   });
 
+  it("keeps generated DOCX output compressed for Microsoft Word compatibility", () => {
+    const template = readTemplate(
+      "public/templates/official/sepultamento/ordem-sepultamento.docx",
+    );
+    const placeholders = detectPlaceholders(template);
+    const output = fillDocx(template, fakeValuesFor(placeholders));
+
+    expect(output.byteLength).toBeLessThan(template.byteLength * 2);
+  });
+
   it("detects and fills every official DOCX template without Multi error", () => {
     const templatePaths = findDocxFiles(OFFICIAL_TEMPLATES_DIR);
 

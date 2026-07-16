@@ -147,7 +147,7 @@ function AttendanceDetail() {
       } catch (visionError: unknown) {
         // Fallback automático: extrator legado.
         usedFallback = true;
-        console.warn("[vision] fallback ativado:", getErrorMessage(visionError));
+        console.warn("[vision] fallback ativado:", getErrorMessage(visionError, ""));
         const legacy = await extractFn({ data: { attendanceId: id } });
         extracted = (legacy?.data ?? {}) as Record<string, string>;
       }

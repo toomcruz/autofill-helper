@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import PizZip from "pizzip";
 import { describe, expect, it } from "vitest";
 import { detectPlaceholders, fillDocx } from "../docx.server";
 
@@ -24,6 +25,28 @@ function fakeValuesFor(placeholders: string[]): Record<string, string> {
   return Object.fromEntries(
     placeholders.map((placeholder) => [placeholder, `valor ficticio para ${placeholder}`]),
   );
+}
+
+function renderedText(docx: Uint8Array): string {
+  const zip = new PizZip(docx);
+  const zipWithFiles = zip as PizZip & { files?: Record<string, unknown> };
+  return Object.keys(zipWithFiles.files ?? {})
+    .filter((name) => name.startsWith("word/") && name.endsWith(".xml"))
+    .map(
+      (name) =>
+        zip
+          .file(name)
+          ?.asText()
+          .replace(/<[^>]+>/g, "") ?? "",
+    )
+    .join("\n");
+}
+
+function expectNoUnresolvedPlaceholders(output: Uint8Array, templatePath: string): void {
+  expect(
+    renderedText(output),
+    `${templatePath} should not keep unresolved placeholders`,
+  ).not.toMatch(/\{\{?\s*[a-zA-Z0-9_]+\s*\}?\}/);
 }
 
 describe("docx official templates", () => {
@@ -60,7 +83,8 @@ describe("docx official templates", () => {
       const values = fakeValuesFor(placeholders);
 
       try {
-        fillDocx(template, values);
+        const output = fillDocx(template, values);
+        expectNoUnresolvedPlaceholders(output, templatePath);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         expect(message, `${templatePath} should not throw Multi error`).not.toMatch(/multi error/i);

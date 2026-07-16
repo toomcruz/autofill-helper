@@ -28,6 +28,9 @@ jobs:
       - name: Check formatting
         run: |
           bunx prettier --check \
+            .github/workflows/validate.yml \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \

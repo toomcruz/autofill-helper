@@ -227,12 +227,18 @@ export const generateDocument = createServerFn({ method: "POST" })
     const extracted = (attendance.extracted_data as Record<string, string>) ?? {};
     const values = applyOfficialTemplateAliases(extracted, template.storage_path);
     const filled = fillDocx(buffer, values);
+    // Wrap Uint8Array in a Blob so supabase-js uploads raw binary bytes.
+    // Uploading a bare Uint8Array on the edge runtime can be serialized as
+    // JSON/text and produce a corrupted .docx that Word refuses to open.
+    const docxBlob = new Blob([filled.buffer as ArrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
 
     const safeName = template.name.replace(/[^\w.-]+/g, "_");
     const outputPath = `${userId}/${data.attendanceId}/${Date.now()}_${safeName}.docx`;
     const { error: uploadError } = await supabase.storage
       .from("generated-documents")
-      .upload(outputPath, filled, {
+      .upload(outputPath, docxBlob, {
         contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         upsert: false,
       });

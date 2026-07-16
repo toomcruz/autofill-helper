@@ -79,15 +79,11 @@ function NewAttendance() {
   }
 
   async function createLinkedAgendaEvent(attendanceId: string, userId: string): Promise<void> {
-    const eventDate = extras.data_agendada?.trim();
-    if (!eventDate || !proc || !["sepultamento", "exumacao"].includes(proc.key)) return;
-
-    const agendaType: AgendaType =
-      proc.key === "sepultamento"
-        ? "velorio_sepultamento"
-        : extras.tipo_agenda_exumacao === "exumacao_pss"
-          ? "exumacao_pss"
-          : "exumacao";
+    if (!proc || !shouldCreateAgendaEvent(proc.key, extras)) return;
+    const eventDate = extras.data_agendada!.trim();
+    const agendaType = resolveAgendaType(proc.key, extras.tipo_agenda_exumacao);
+    if (!agendaType) return;
+    const typedAgenda: AgendaType = agendaType;
 
     const { error } = await db.from("agenda_events").insert({
       user_id: userId,

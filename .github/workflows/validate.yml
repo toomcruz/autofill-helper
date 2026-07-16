@@ -42,6 +42,9 @@ jobs:
       - name: TypeScript
         run: bunx tsc --noEmit
 
+      - name: Tests
+        run: bunx vitest run
+
       - name: Build
         run: bun run build
 

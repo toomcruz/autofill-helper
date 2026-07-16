@@ -28,12 +28,9 @@ Regras:
 - CPF no formato 000.000.000-00.
 ${params.contextHints ? `\nContexto adicional: ${params.contextHints}` : ""}`;
 
-  const content: Array<
-    | { type: "text"; text: string }
-    | { type: "image_url"; image_url: { url: string } }
-  > = [
+  const content: any[] = [
     { type: "text", text: "Extraia os dados das imagens abaixo em JSON." },
-    ...params.imageDataUrls.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+    ...params.imageDataUrls.map((url) => ({ type: "image_url", image_url: { url } })),
   ];
 
   const res = await fetch(GATEWAY_URL, {

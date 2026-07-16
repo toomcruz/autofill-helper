@@ -57,7 +57,7 @@ export function validateDate(input: string | null | undefined): DateValidation {
   let month = 0;
   let day = 0;
 
-  const brMatch = raw.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  const brMatch = raw.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
   const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (brMatch) {
@@ -176,7 +176,7 @@ export function normalizeAdministrativeId(
   const raw = String(input ?? "").trim();
   if (!raw) return { valid: false, normalized: "" };
   if (allowAlphanumeric) {
-    return { valid: /^[A-Za-z0-9/-]+$/.test(raw), normalized: raw };
+    return { valid: /^[A-Za-z0-9\-\/]+$/.test(raw), normalized: raw };
   }
   const onlyDigits = raw.replace(/\s+/g, "");
   return { valid: /^\d+$/.test(onlyDigits), normalized: onlyDigits };

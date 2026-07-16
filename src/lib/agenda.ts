@@ -1,12 +1,7 @@
 export type AgendaType = "exumacao" | "velorio_sepultamento" | "exumacao_pss";
 
 export type AgendaStatus =
-  | "agendado"
-  | "confirmado"
-  | "em_andamento"
-  | "concluido"
-  | "cancelado"
-  | "pendente";
+  "agendado" | "confirmado" | "em_andamento" | "concluido" | "cancelado" | "pendente";
 
 export interface AgendaEvent {
   id: string;
@@ -77,8 +72,7 @@ export const AGENDA_TYPES: Array<{
   {
     value: "exumacao_pss",
     label: "Exumação PPS",
-    description:
-      "Exumação para Pronto Sepultamento (PPS) — agenda separada com horários fixos.",
+    description: "Exumação para Pronto Sepultamento (PPS) — agenda separada com horários fixos.",
   },
 ];
 

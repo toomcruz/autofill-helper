@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileText, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
+import { Plus, FileText, Clock, CheckCircle2 } from "lucide-react";
 import { PROCESSES } from "@/lib/processes";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,13 +13,7 @@ export const Route = createFileRoute("/_authed/dashboard")({
   component: Dashboard,
 });
 
-type StatusMeta = {
-  label: string;
-  icon: LucideIcon;
-  variant: "default" | "secondary" | "destructive" | "outline";
-};
-
-const statusMeta: Record<string, StatusMeta> = {
+const statusMeta: Record<string, { label: string; icon: any; variant: any }> = {
   draft: { label: "Rascunho", icon: Clock, variant: "outline" },
   extracting: { label: "Extraindo", icon: Clock, variant: "secondary" },
   reviewing: { label: "Revisão", icon: Clock, variant: "secondary" },

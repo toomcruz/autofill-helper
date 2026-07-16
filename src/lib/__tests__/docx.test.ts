@@ -53,6 +53,10 @@ describe("docx official templates", () => {
     for (const templatePath of templatePaths) {
       const template = readTemplate(templatePath);
       const placeholders = detectPlaceholders(template);
+      expect(
+        placeholders.length,
+        `${templatePath} should have detected placeholders`,
+      ).toBeGreaterThan(0);
       const values = fakeValuesFor(placeholders);
 
       try {

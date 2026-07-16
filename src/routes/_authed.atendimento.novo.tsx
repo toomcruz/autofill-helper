@@ -329,7 +329,19 @@ function NewAttendance() {
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               <Button
-                onClick={() => setStep("upload")}
+                onClick={() => {
+                  if (isSepultamento) {
+                    const errs = validateTriagemSepultamento({
+                      subprocess,
+                      data_agendada: extras.data_agendada,
+                      hora_sepultamento: extras.hora_sepultamento,
+                      sala_velorio: extras.sala_velorio,
+                      sem_velorio: (extras.sem_velorio as "SIM" | "") || "",
+                    });
+                    if (errs.length) return toast.error(errs[0]);
+                  }
+                  setStep("upload");
+                }}
                 disabled={!!proc.subprocessOptions && !subprocess}
               >
                 Continuar <ArrowRight className="h-4 w-4 ml-1" />

@@ -76,6 +76,22 @@ describe("docx official templates", () => {
     expect(output.byteLength).toBeLessThan(template.byteLength * 2);
   });
 
+  it("removes the degenerate hidden Word ink object from Ordem de Sepultamento", () => {
+    const template = readTemplate("public/templates/official/sepultamento/ordem-sepultamento.docx");
+    const sourceZip = new PizZip(template);
+    expect(sourceZip.file("word/document.xml")?.asText()).toContain("<w14:contentPart");
+
+    const placeholders = detectPlaceholders(template);
+    const outputZip = new PizZip(fillDocx(template, fakeValuesFor(placeholders)));
+
+    expect(outputZip.file("word/document.xml")?.asText()).not.toContain("<w14:contentPart");
+    expect(outputZip.file("word/_rels/document.xml.rels")?.asText()).not.toMatch(
+      /ink\/ink1\.xml|media\/image1\.emf/,
+    );
+    expect(outputZip.file("word/ink/ink1.xml")).toBeNull();
+    expect(outputZip.file("word/media/image1.emf")).toBeNull();
+  });
+
   it("detects and fills every official DOCX template without Multi error", () => {
     const templatePaths = findDocxFiles(OFFICIAL_TEMPLATES_DIR);
 

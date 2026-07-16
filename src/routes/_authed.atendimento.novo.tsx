@@ -83,12 +83,11 @@ function NewAttendance() {
     const eventDate = extras.data_agendada!.trim();
     const agendaType = resolveAgendaType(proc.key, extras.tipo_agenda_exumacao);
     if (!agendaType) return;
-    const typedAgenda: AgendaType = agendaType;
 
     const { error } = await db.from("agenda_events").insert({
       user_id: userId,
       attendance_id: attendanceId,
-      agenda_type: agendaType,
+      agenda_type: typedAgenda,
       event_date: eventDate,
       start_time:
         proc.key === "sepultamento"

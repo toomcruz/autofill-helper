@@ -54,6 +54,8 @@ import {
   type AgendaStatus,
   type AgendaType,
 } from "@/lib/agenda";
+import { computeExhumationSlotUsage } from "@/lib/agenda-slots";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/agenda")({
   component: OperationalAgenda,

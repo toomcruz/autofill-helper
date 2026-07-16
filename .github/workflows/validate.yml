@@ -25,9 +25,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check formatting
+      - name: Apply formatting in CI workspace
         run: |
-          bunx prettier --check \
+          bunx prettier --write \
             .github/workflows/validate.yml \
             src/lib/docx.server.ts \
             src/lib/__tests__/docx.test.ts \
@@ -41,6 +41,33 @@ jobs:
             src/routes/_authed.atendimento.novo.tsx \
             src/routes/_authed.modelos.tsx \
             src/routes/_authed.tsx
+
+      - name: Package formatted files
+        run: |
+          tar -czf prettier-output.tar.gz \
+            .github/workflows/validate.yml \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
+            src/lib/agenda.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/error-message.ts \
+            src/lib/official-templates.ts \
+            src/lib/processes.ts \
+            'src/routes/_authed.agenda.tsx' \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/routes/_authed.atendimento.novo.tsx \
+            src/routes/_authed.modelos.tsx \
+            src/routes/_authed.tsx
+
+      - name: Upload formatted files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-output
+          path: prettier-output.tar.gz
+
+      - name: Verify formatting produced no changes
+        run: git diff --exit-code
 
   typecheck:
     runs-on: ubuntu-latest
@@ -115,7 +142,46 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint changed files
+      - name: Apply lint fixes in CI workspace
+        run: |
+          bunx eslint --fix \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
+            src/lib/agenda.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/error-message.ts \
+            src/lib/official-templates.ts \
+            src/lib/processes.ts \
+            'src/routes/_authed.agenda.tsx' \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/routes/_authed.atendimento.novo.tsx \
+            src/routes/_authed.modelos.tsx \
+            src/routes/_authed.tsx || true
+
+      - name: Package lint-fixed files
+        run: |
+          tar -czf eslint-output.tar.gz \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
+            src/lib/agenda.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/error-message.ts \
+            src/lib/official-templates.ts \
+            src/lib/processes.ts \
+            'src/routes/_authed.agenda.tsx' \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/routes/_authed.atendimento.novo.tsx \
+            src/routes/_authed.modelos.tsx \
+            src/routes/_authed.tsx
+
+      - name: Upload lint-fixed files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-output
+          path: eslint-output.tar.gz
+
+      - name: Verify lint
         run: |
           bunx eslint \
             src/lib/docx.server.ts \

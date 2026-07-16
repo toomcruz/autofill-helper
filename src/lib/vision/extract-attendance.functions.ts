@@ -122,7 +122,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
 
     const { error: saveError } = await supabase
       .from("attendances")
-      .update({ extracted_data: nextExtracted, status: "reviewing" })
+      .update({ extracted_data: nextExtracted as never, status: "reviewing" })
       .eq("id", data.attendanceId);
     if (saveError) throw new Error(saveError.message);
 

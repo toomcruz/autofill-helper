@@ -49,6 +49,19 @@ function expectNoUnresolvedPlaceholders(output: Uint8Array, templatePath: string
   ).not.toMatch(/\{\{?\s*[a-zA-Z0-9_]+\s*\}?\}/);
 }
 
+function expectNoHiddenInk(zip: PizZip, templatePath: string): void {
+  expect(
+    zip.file("word/document.xml")?.asText() ?? "",
+    `${templatePath} should not contain hidden Word ink content parts`,
+  ).not.toContain("<w14:contentPart");
+  expect(
+    zip.file("word/_rels/document.xml.rels")?.asText() ?? "",
+    `${templatePath} should not reference hidden Word ink parts`,
+  ).not.toMatch(/ink\/ink1\.xml|media\/image1\.emf/);
+  expect(zip.file("word/ink/ink1.xml")).toBeNull();
+  expect(zip.file("word/media/image1.emf")).toBeNull();
+}
+
 describe("docx official templates", () => {
   it("detects double-brace placeholders without inner brace duplicates", () => {
     const template = readTemplate("public/templates/official/velorio/condolencias.docx");
@@ -76,20 +89,20 @@ describe("docx official templates", () => {
     expect(output.byteLength).toBeLessThan(template.byteLength * 2);
   });
 
-  it("removes the degenerate hidden Word ink object from Ordem de Sepultamento", () => {
-    const template = readTemplate("public/templates/official/sepultamento/ordem-sepultamento.docx");
-    const sourceZip = new PizZip(template);
-    expect(sourceZip.file("word/document.xml")?.asText()).toContain("<w14:contentPart");
+  it("keeps sanitized Sepultamento and Exumacao templates free of hidden Word ink", () => {
+    const templatePaths = [
+      "public/templates/official/sepultamento/ordem-sepultamento.docx",
+      "public/templates/official/exumacao/ordem-exumacao.docx",
+    ];
 
-    const placeholders = detectPlaceholders(template);
-    const outputZip = new PizZip(fillDocx(template, fakeValuesFor(placeholders)));
+    for (const templatePath of templatePaths) {
+      const template = readTemplate(templatePath);
+      expectNoHiddenInk(new PizZip(template), templatePath);
 
-    expect(outputZip.file("word/document.xml")?.asText()).not.toContain("<w14:contentPart");
-    expect(outputZip.file("word/_rels/document.xml.rels")?.asText()).not.toMatch(
-      /ink\/ink1\.xml|media\/image1\.emf/,
-    );
-    expect(outputZip.file("word/ink/ink1.xml")).toBeNull();
-    expect(outputZip.file("word/media/image1.emf")).toBeNull();
+      const placeholders = detectPlaceholders(template);
+      const output = fillDocx(template, fakeValuesFor(placeholders));
+      expectNoHiddenInk(new PizZip(output), `${templatePath} output`);
+    }
   });
 
   it("detects and fills every official DOCX template without Multi error", () => {

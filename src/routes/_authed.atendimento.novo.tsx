@@ -87,7 +87,7 @@ function NewAttendance() {
     const { error } = await db.from("agenda_events").insert({
       user_id: userId,
       attendance_id: attendanceId,
-      agenda_type: typedAgenda,
+      agenda_type: agendaType,
       event_date: eventDate,
       start_time:
         proc.key === "sepultamento"

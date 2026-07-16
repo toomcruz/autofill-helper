@@ -55,6 +55,16 @@ import {
   type AgendaType,
 } from "@/lib/agenda";
 import { computeExhumationSlotUsage } from "@/lib/agenda-slots";
+import {
+  EXHUMATION_PHASES,
+  EXHUMATION_TIME_SLOTS,
+  deleteExhumationEvent,
+  fetchExhumationEvents,
+  insertExhumationEvent,
+  isExhumationAgendaType,
+  updateExhumationEvent,
+  updateExhumationStatus,
+} from "@/lib/agenda-exhumation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/agenda")({

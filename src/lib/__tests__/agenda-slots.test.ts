@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeExhumationSlotUsage,
-  isAgendaStatusBlocking,
-} from "@/lib/agenda-slots";
+import { computeExhumationSlotUsage, isAgendaStatusBlocking } from "@/lib/agenda-slots";
 import type { AgendaEvent, AgendaStatus } from "@/lib/agenda";
 
 function make(id: string, start: string | null, status: AgendaStatus): AgendaEvent {

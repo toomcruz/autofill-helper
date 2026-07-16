@@ -12,9 +12,10 @@ export function resolveAlias(input: string): string | null {
  * - Se uma chave não tem alias conhecido, é preservada como veio.
  * - Se duas chaves diferentes canonizam para a mesma chave, prevalece o primeiro valor não vazio.
  */
-export function rewriteKeysToCanonical(
-  input: Record<string, string>,
-): { rewritten: Record<string, string>; unknown: string[] } {
+export function rewriteKeysToCanonical(input: Record<string, string>): {
+  rewritten: Record<string, string>;
+  unknown: string[];
+} {
   const rewritten: Record<string, string> = {};
   const unknown: string[] = [];
   for (const [key, value] of Object.entries(input)) {

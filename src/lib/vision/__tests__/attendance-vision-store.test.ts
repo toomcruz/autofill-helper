@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  initialVisionState,
-  visionReducer,
-  type VisionState,
-} from "../attendance-vision-store";
+import { initialVisionState, visionReducer, type VisionState } from "../attendance-vision-store";
 import type { ImageExtractionResponse } from "../schema";
 
 function mkResponse(
@@ -56,7 +52,12 @@ describe("visionReducer — teste 8: reprocessamento preserva confirmações", (
       type: "ingest_extraction",
       response: mkResponse("img1", {
         fields: [
-          { canonicalKey: "cpf_responsavel", value: "111.111.111-11", confidence: 0.8, evidence: "" },
+          {
+            canonicalKey: "cpf_responsavel",
+            value: "111.111.111-11",
+            confidence: 0.8,
+            evidence: "",
+          },
         ],
       }),
     });
@@ -78,7 +79,12 @@ describe("visionReducer — teste 8: reprocessamento preserva confirmações", (
       type: "ingest_extraction",
       response: mkResponse("img1", {
         fields: [
-          { canonicalKey: "cpf_responsavel", value: "999.999.999-99", confidence: 0.9, evidence: "" },
+          {
+            canonicalKey: "cpf_responsavel",
+            value: "999.999.999-99",
+            confidence: 0.9,
+            evidence: "",
+          },
         ],
       }),
     });
@@ -116,7 +122,12 @@ describe("visionReducer — teste 12: conflito é apresentado, não resolvido si
       type: "ingest_extraction",
       response: mkResponse("img1", {
         fields: [
-          { canonicalKey: "cpf_responsavel", value: "111.111.111-11", confidence: 0.9, evidence: "A" },
+          {
+            canonicalKey: "cpf_responsavel",
+            value: "111.111.111-11",
+            confidence: 0.9,
+            evidence: "A",
+          },
         ],
       }),
     });
@@ -125,7 +136,12 @@ describe("visionReducer — teste 12: conflito é apresentado, não resolvido si
       response: mkResponse("img2", {
         documentType: "cpf",
         fields: [
-          { canonicalKey: "cpf_responsavel", value: "222.222.222-22", confidence: 0.85, evidence: "B" },
+          {
+            canonicalKey: "cpf_responsavel",
+            value: "222.222.222-22",
+            confidence: 0.85,
+            evidence: "B",
+          },
         ],
       }),
     });

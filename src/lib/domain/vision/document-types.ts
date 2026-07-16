@@ -43,12 +43,7 @@ export function expectedRolesForProcess(process: ProcessKind): PersonRole[] {
     case "sepultamento_quadra_geral":
       return ["falecido_sepultamento", "responsavel", "requerente"];
     case "sepultamento_jazigo":
-      return [
-        "falecido_sepultamento",
-        "responsavel",
-        "concessionario",
-        "signatario",
-      ];
+      return ["falecido_sepultamento", "responsavel", "concessionario", "signatario"];
     case "pps":
       return [
         "falecido_sepultamento",
@@ -60,13 +55,7 @@ export function expectedRolesForProcess(process: ProcessKind): PersonRole[] {
     case "exumacao_comum":
       return ["falecido_exumacao", "responsavel", "requerente"];
     case "exumacao_jazigo":
-      return [
-        "falecido_exumacao",
-        "responsavel",
-        "requerente",
-        "concessionario",
-        "signatario",
-      ];
+      return ["falecido_exumacao", "responsavel", "requerente", "concessionario", "signatario"];
     case "ossario":
       return ["falecido_sepultamento", "responsavel", "concessionario"];
     case "translado":

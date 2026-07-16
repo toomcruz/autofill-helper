@@ -36,9 +36,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
     if (imageError) throw new Error(imageError.message);
     if (!images?.length) throw new Error("Nenhuma imagem enviada");
 
-    const { extractAttendanceVisionCore } = await import(
-      "./extract-attendance.core"
-    );
+    const { extractAttendanceVisionCore } = await import("./extract-attendance.core");
 
     // Prepara imagens em dataURL.
     const prepared: Array<{
@@ -75,10 +73,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
     const previousState =
       rawExtracted && typeof rawExtracted === "object" && "_vision" in rawExtracted
         ? ((rawExtracted as { _vision?: unknown })._vision as
-            | Awaited<
-                ReturnType<typeof extractAttendanceVisionCore>
-              >["state"]
-            | undefined)
+            Awaited<ReturnType<typeof extractAttendanceVisionCore>>["state"] | undefined)
         : undefined;
 
     const { state, errors } = await extractAttendanceVisionCore({

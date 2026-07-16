@@ -4,10 +4,7 @@
  *
  * Server-only. Nunca importe deste arquivo em código de cliente.
  */
-import {
-  parseImageExtractionResponse,
-  type ImageExtractionResponse,
-} from "@/lib/vision/schema";
+import { parseImageExtractionResponse, type ImageExtractionResponse } from "@/lib/vision/schema";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3-flash-preview";

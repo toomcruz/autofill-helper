@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  canonicalize,
-  canonicalizeExtractedData,
-  canonicalizeInContext,
-} from "../canonicalize";
+import { canonicalize, canonicalizeExtractedData, canonicalizeInContext } from "../canonicalize";
 import { getExpectedFields } from "../expected-fields";
-import {
-  buildTemplatePayload,
-  getCanonicalKeysForDocument,
-} from "../template-payload";
+import { buildTemplatePayload, getCanonicalKeysForDocument } from "../template-payload";
 import type { AttendanceContext } from "../types";
 
 const baseSepultamento: AttendanceContext = {
@@ -54,9 +47,7 @@ describe("canonicalize (spec §5, §8)", () => {
     expect(canonicalizeInContext("localizacao", baseSepQuadraSemVelorio)).toBe(
       "local_sepultamento",
     );
-    expect(canonicalizeInContext("localizacao", baseExumacaoPreparacao)).toBe(
-      "local_exumacao",
-    );
+    expect(canonicalizeInContext("localizacao", baseExumacaoPreparacao)).toBe("local_exumacao");
   });
 
   it("descarta chaves desconhecidas para 'unknown' (spec §13)", () => {

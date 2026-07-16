@@ -32,16 +32,7 @@ export type FieldSection =
   | "outros";
 
 export type FieldDataType =
-  | "name"
-  | "cpf"
-  | "rg"
-  | "date"
-  | "time"
-  | "phone"
-  | "address"
-  | "email"
-  | "identifier"
-  | "text";
+  "name" | "cpf" | "rg" | "date" | "time" | "phone" | "address" | "email" | "identifier" | "text";
 
 export type EntityRole =
   | "falecido_sepultamento"
@@ -80,11 +71,12 @@ const burialHere: FieldConditionFn = (c) => c.burial_here === "sim";
 const isJazigo: FieldConditionFn = (c) => c.local_sepultamento_tipo === "jazigo";
 const isQuadraGeral: FieldConditionFn = (c) => c.local_sepultamento_tipo === "quadra_geral";
 const isPps: FieldConditionFn = (c) => isJazigo(c) && c.jazigo_possui_gaveta_disponivel === "nao";
-const isPpsExum = (c: AttendanceContext) =>
-  c.process === "velorio_sepultamento" && isPps(c);
+const isPpsExum = (c: AttendanceContext) => c.process === "velorio_sepultamento" && isPps(c);
 
-const isExhumationPhase = (phase: "preparacao" | "execucao"): FieldConditionFn =>
-  (c) => c.process === "exumacao" && c.exhumation_phase === phase;
+const isExhumationPhase =
+  (phase: "preparacao" | "execucao"): FieldConditionFn =>
+  (c) =>
+    c.process === "exumacao" && c.exhumation_phase === phase;
 
 // ---------- Catálogo ----------
 
@@ -98,11 +90,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     dataType: "name",
     aliases: ["nome_falecido", "nomefal", "nomefalecido", "falecido"],
     applicableProcesses: ["velorio_sepultamento"],
-    applicableDocuments: [
-      "identificacao-sala-velorio",
-      "condolencias",
-      "ordem-sepultamento",
-    ],
+    applicableDocuments: ["identificacao-sala-velorio", "condolencias", "ordem-sepultamento"],
     requiredWhen: (c) => c.process === "velorio_sepultamento" && (hasWake(c) || burialHere(c)),
     visibleWhen: (c) => c.process === "velorio_sepultamento",
     priority: 1,
@@ -215,12 +203,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     entityRole: "responsavel",
     dataType: "cpf",
     aliases: ["cpfresp", "cpfrequerente"],
-    applicableProcesses: [
-      "velorio_sepultamento",
-      "exumacao",
-      "translado",
-      "atualizacao_cadastral",
-    ],
+    applicableProcesses: ["velorio_sepultamento", "exumacao", "translado", "atualizacao_cadastral"],
     applicableDocuments: [
       "ordem-sepultamento",
       "ordem-exumacao",
@@ -373,13 +356,16 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     section: "jazigo",
     entityRole: "jazigo",
     dataType: "identifier",
-    aliases: ["inscricao_gs", "inscrgs", "inscr_gs", "inscrgscemi", "inscr_gscemi", "numero_inscricao", "inscricao_g_s"],
-    applicableProcesses: [
-      "velorio_sepultamento",
-      "exumacao",
-      "ossario",
-      "atualizacao_cadastral",
+    aliases: [
+      "inscricao_gs",
+      "inscrgs",
+      "inscr_gs",
+      "inscrgscemi",
+      "inscr_gscemi",
+      "numero_inscricao",
+      "inscricao_g_s",
     ],
+    applicableProcesses: ["velorio_sepultamento", "exumacao", "ossario", "atualizacao_cadastral"],
     applicableDocuments: [
       "ordem-sepultamento",
       "ordem-exumacao",
@@ -396,11 +382,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     entityRole: "jazigo",
     dataType: "text",
     aliases: [],
-    applicableProcesses: [
-      "velorio_sepultamento",
-      "exumacao",
-      "atualizacao_cadastral",
-    ],
+    applicableProcesses: ["velorio_sepultamento", "exumacao", "atualizacao_cadastral"],
     applicableDocuments: ["atualizacao-cadastral"],
     priority: 2,
     sensitive: false,
@@ -536,11 +518,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     dataType: "text",
     aliases: ["sala"],
     applicableProcesses: ["velorio_sepultamento"],
-    applicableDocuments: [
-      "identificacao-sala-velorio",
-      "condolencias",
-      "ordem-sepultamento",
-    ],
+    applicableDocuments: ["identificacao-sala-velorio", "condolencias", "ordem-sepultamento"],
     requiredWhen: hasWake,
     visibleWhen: hasWake,
     priority: 1,
@@ -657,7 +635,8 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     aliases: ["horaag"],
     applicableProcesses: ["exumacao", "velorio_sepultamento"],
     applicableDocuments: ["ordem-exumacao"],
-    visibleWhen: (c) => c.exhumation_scheduling_mode === "agenda" || c.process === "velorio_sepultamento",
+    visibleWhen: (c) =>
+      c.exhumation_scheduling_mode === "agenda" || c.process === "velorio_sepultamento",
     priority: 2,
     sensitive: false,
   },
@@ -691,7 +670,15 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     dataType: "identifier",
     // PPS = Exumação para Pronto Sepultamento. Aliases legados PSS
     // preservados para dados já salvos em atendimentos antigos.
-    aliases: ["referencia_pss", "numeropps", "numeropss", "referenciapps", "referenciapss", "numero_pps", "numero_pss"],
+    aliases: [
+      "referencia_pss",
+      "numeropps",
+      "numeropss",
+      "referenciapps",
+      "referenciapss",
+      "numero_pps",
+      "numero_pss",
+    ],
     applicableProcesses: ["exumacao"],
     applicableDocuments: [],
     visibleWhen: (c) => c.process === "exumacao",
@@ -876,11 +863,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
       "translado",
       "atualizacao_cadastral",
     ],
-    applicableDocuments: [
-      "ordem-sepultamento",
-      "ordem-exumacao",
-      "atualizacao-cadastral",
-    ],
+    applicableDocuments: ["ordem-sepultamento", "ordem-exumacao", "atualizacao-cadastral"],
     priority: 3,
     sensitive: false,
   },

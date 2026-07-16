@@ -197,9 +197,7 @@ export function visionReducer(state: VisionState, action: VisionAction): VisionS
             ? {
                 ...p,
                 confirmedByUser: action.confirmedByUser ?? true,
-                confirmedRoles: Array.from(
-                  new Set([...(p.confirmedRoles ?? []), action.role]),
-                ),
+                confirmedRoles: Array.from(new Set([...(p.confirmedRoles ?? []), action.role])),
               }
             : p,
         ),
@@ -228,7 +226,8 @@ export function visionReducer(state: VisionState, action: VisionAction): VisionS
 
     case "resolve_conflict": {
       const cands = state.conflicts.find((c) => c.key === action.key);
-      const evidence = cands?.candidates.find((x) => x.value === action.chosenValue)?.evidence ?? "";
+      const evidence =
+        cands?.candidates.find((x) => x.value === action.chosenValue)?.evidence ?? "";
       const docType = (cands?.candidates[0]?.documentType ??
         "desconhecido") as ConfirmedField["documentType"];
       return visionReducer(state, {

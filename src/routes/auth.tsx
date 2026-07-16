@@ -41,7 +41,10 @@ function AuthPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName }, emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
     });
     setSubmitting(false);
     if (error) return toast.error(error.message);
@@ -80,11 +83,23 @@ function AuthPage() {
                 <form onSubmit={signIn} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email-in">E-mail</Label>
-                    <Input id="email-in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <Input
+                      id="email-in"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password-in">Senha</Label>
-                    <Input id="password-in" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    <Input
+                      id="password-in"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
                   </div>
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Entrar
@@ -95,15 +110,32 @@ function AuthPage() {
                 <form onSubmit={signUp} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="name-up">Nome completo</Label>
-                    <Input id="name-up" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                    <Input
+                      id="name-up"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email-up">E-mail</Label>
-                    <Input id="email-up" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <Input
+                      id="email-up"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password-up">Senha</Label>
-                    <Input id="password-up" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                    <Input
+                      id="password-up"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
                   </div>
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Criar conta

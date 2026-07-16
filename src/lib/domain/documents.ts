@@ -1,8 +1,4 @@
-import type {
-  AttendanceContext,
-  DocumentSlug,
-  RequiredDocument,
-} from "./types";
+import type { AttendanceContext, DocumentSlug, RequiredDocument } from "./types";
 
 /**
  * Pure implementation of the "required documents" rules described in the
@@ -16,35 +12,23 @@ import type {
 const R = {
   velorio: "Velório selecionado (has_wake=sim).",
   quadraGeral: "Sepultamento em quadra geral.",
-  jazigoComVaga:
-    "Sepultamento em jazigo com gaveta disponível — Ordem + Termo.",
+  jazigoComVaga: "Sepultamento em jazigo com gaveta disponível — Ordem + Termo.",
   ppsSepultamento:
     "Exumação para Pronto Sepultamento (PPS) — Ordem de Sepultamento do novo falecido.",
-  ppsExumacao:
-    "Exumação para Pronto Sepultamento (PPS) — Ordem de Exumação do falecido anterior.",
-  ppsTermo:
-    "Exumação para Pronto Sepultamento (PPS) — Termo de Responsabilidade do jazigo.",
+  ppsExumacao: "Exumação para Pronto Sepultamento (PPS) — Ordem de Exumação do falecido anterior.",
+  ppsTermo: "Exumação para Pronto Sepultamento (PPS) — Termo de Responsabilidade do jazigo.",
   preparacaoQuadra: "Preparação da exumação em quadra geral.",
-  preparacaoJazigo:
-    "Preparação da exumação em jazigo — Ordem + Termo do responsável.",
-  execucaoOssarioAluguel:
-    "Execução da exumação com destino ossário (aluguel).",
-  execucaoOssarioAquisicao:
-    "Execução da exumação com destino ossário (aquisição).",
-  execucaoTranslado:
-    "Execução da exumação com destino translado.",
-  semiIntacto:
-    "Resultado semi-intacto — guia específica quando o modelo estiver cadastrado.",
+  preparacaoJazigo: "Preparação da exumação em jazigo — Ordem + Termo do responsável.",
+  execucaoOssarioAluguel: "Execução da exumação com destino ossário (aluguel).",
+  execucaoOssarioAquisicao: "Execução da exumação com destino ossário (aquisição).",
+  execucaoTranslado: "Execução da exumação com destino translado.",
+  semiIntacto: "Resultado semi-intacto — guia específica quando o modelo estiver cadastrado.",
   ossarioIndependente: "Processo Ossário independente.",
   transladoIndependente: "Processo Translado independente.",
   atualizacaoCadastral: "Processo Atualização Cadastral.",
 } as const;
 
-function add(
-  out: Map<DocumentSlug, RequiredDocument>,
-  slug: DocumentSlug,
-  reason: string,
-): void {
+function add(out: Map<DocumentSlug, RequiredDocument>, slug: DocumentSlug, reason: string): void {
   // Never generate duplicates — first reason wins for traceability.
   if (!out.has(slug)) out.set(slug, { slug, reason });
 }
@@ -101,8 +85,7 @@ export function getRequiredDocuments(ctx: AttendanceContext): RequiredDocument[]
         // Em jazigo, só há documento de destino quando o usuário confirmou
         // explicitamente que os despojos sairão do jazigo.
         const emitirDestino =
-          local === "quadra_geral" ||
-          (local === "jazigo" && ctx.destino_fora_jazigo === "sim");
+          local === "quadra_geral" || (local === "jazigo" && ctx.destino_fora_jazigo === "sim");
 
         if (emitirDestino) {
           if (ctx.destino_pos_exumacao === "ossario") {

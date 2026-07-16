@@ -4,24 +4,16 @@ import type { AttendanceContext } from "../types";
 
 describe("isVelorioSepultamentoValid", () => {
   it("aceita somente velório", () => {
-    expect(
-      isVelorioSepultamentoValid({ has_wake: "sim", burial_here: "nao" }),
-    ).toBe(true);
+    expect(isVelorioSepultamentoValid({ has_wake: "sim", burial_here: "nao" })).toBe(true);
   });
   it("aceita somente sepultamento", () => {
-    expect(
-      isVelorioSepultamentoValid({ has_wake: "nao", burial_here: "sim" }),
-    ).toBe(true);
+    expect(isVelorioSepultamentoValid({ has_wake: "nao", burial_here: "sim" })).toBe(true);
   });
   it("aceita velório e sepultamento", () => {
-    expect(
-      isVelorioSepultamentoValid({ has_wake: "sim", burial_here: "sim" }),
-    ).toBe(true);
+    expect(isVelorioSepultamentoValid({ has_wake: "sim", burial_here: "sim" })).toBe(true);
   });
   it("rejeita nao/nao", () => {
-    expect(
-      isVelorioSepultamentoValid({ has_wake: "nao", burial_here: "nao" }),
-    ).toBe(false);
+    expect(isVelorioSepultamentoValid({ has_wake: "nao", burial_here: "nao" })).toBe(false);
   });
   it("rejeita entradas incompletas", () => {
     expect(isVelorioSepultamentoValid({})).toBe(false);

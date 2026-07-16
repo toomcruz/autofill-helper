@@ -55,10 +55,7 @@ export function canonicalize(rawKey: string): string | null {
  * Canonicaliza usando o contexto do atendimento. Necessário para chaves
  * genéricas historicamente reutilizadas em fluxos distintos.
  */
-export function canonicalizeInContext(
-  rawKey: string,
-  ctx: AttendanceContext,
-): string | null {
+export function canonicalizeInContext(rawKey: string, ctx: AttendanceContext): string | null {
   if (!rawKey) return null;
   const n = normalize(rawKey);
 
@@ -81,10 +78,7 @@ export function canonicalizeInContext(
 }
 
 /** Retorna a definição canônica correspondente, se existir. */
-export function resolveField(
-  rawKey: string,
-  ctx?: AttendanceContext,
-): FieldDefinition | undefined {
+export function resolveField(rawKey: string, ctx?: AttendanceContext): FieldDefinition | undefined {
   const key = ctx ? canonicalizeInContext(rawKey, ctx) : canonicalize(rawKey);
   if (!key) return undefined;
   return FIELD_CATALOG.find((f) => f.canonicalKey === key);

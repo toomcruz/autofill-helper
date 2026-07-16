@@ -10,25 +10,17 @@ import type { AttendanceContext } from "./types";
  * Questions that are always visible for their process are not included
  * (the UI shows them unconditionally under the correct process).
  */
-export function isQuestionVisible(
-  key: string,
-  ctx: AttendanceContext,
-): boolean {
+export function isQuestionVisible(key: string, ctx: AttendanceContext): boolean {
   switch (key) {
     // Velório / Sepultamento
     case "local_sepultamento_tipo":
       return ctx.burial_here === "sim";
     case "jazigo_possui_gaveta_disponivel":
-      return (
-        ctx.burial_here === "sim" &&
-        ctx.local_sepultamento_tipo === "jazigo"
-      );
+      return ctx.burial_here === "sim" && ctx.local_sepultamento_tipo === "jazigo";
 
     // Exumação — execução
     case "resultado_exumacao":
-      return (
-        ctx.process === "exumacao" && ctx.exhumation_phase === "execucao"
-      );
+      return ctx.process === "exumacao" && ctx.exhumation_phase === "execucao";
     case "destino_fora_jazigo":
       return (
         ctx.process === "exumacao" &&
@@ -51,13 +43,11 @@ export function isQuestionVisible(
       return false;
     case "modalidade_ossario":
       return (
-        isQuestionVisible("destino_pos_exumacao", ctx) &&
-        ctx.destino_pos_exumacao === "ossario"
+        isQuestionVisible("destino_pos_exumacao", ctx) && ctx.destino_pos_exumacao === "ossario"
       );
     case "tipo_translado":
       return (
-        isQuestionVisible("destino_pos_exumacao", ctx) &&
-        ctx.destino_pos_exumacao === "translado"
+        isQuestionVisible("destino_pos_exumacao", ctx) && ctx.destino_pos_exumacao === "translado"
       );
     default:
       return true;

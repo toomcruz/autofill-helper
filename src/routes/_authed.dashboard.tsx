@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, FileText, Clock, CheckCircle2 } from "lucide-react";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Plus, FileText, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
 import { PROCESSES } from "@/lib/processes";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,7 +13,10 @@ export const Route = createFileRoute("/_authed/dashboard")({
   component: Dashboard,
 });
 
-const statusMeta: Record<string, { label: string; icon: any; variant: any }> = {
+const statusMeta: Record<
+  string,
+  { label: string; icon: LucideIcon; variant: BadgeProps["variant"] }
+> = {
   draft: { label: "Rascunho", icon: Clock, variant: "outline" },
   extracting: { label: "Extraindo", icon: Clock, variant: "secondary" },
   reviewing: { label: "Revisão", icon: Clock, variant: "secondary" },
@@ -40,7 +43,9 @@ function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Atendimentos</h1>
-          <p className="text-sm text-muted-foreground">Gerencie seus atendimentos e gere documentos.</p>
+          <p className="text-sm text-muted-foreground">
+            Gerencie seus atendimentos e gere documentos.
+          </p>
         </div>
         <Link to="/atendimento/novo">
           <Button className="gap-2">
@@ -59,7 +64,9 @@ function Dashboard() {
             </div>
             <div>
               <h3 className="font-medium">Nenhum atendimento ainda</h3>
-              <p className="text-sm text-muted-foreground">Comece um novo atendimento e envie prints ou fotos.</p>
+              <p className="text-sm text-muted-foreground">
+                Comece um novo atendimento e envie prints ou fotos.
+              </p>
             </div>
             <Link to="/atendimento/novo">
               <Button className="gap-2 mt-2">
@@ -86,7 +93,10 @@ function Dashboard() {
                         <div className="font-medium">{proc?.label ?? a.process}</div>
                         <div className="text-xs text-muted-foreground">
                           {a.subprocess ? `${a.subprocess} · ` : ""}
-                          {formatDistanceToNow(new Date(a.created_at), { addSuffix: true, locale: ptBR })}
+                          {formatDistanceToNow(new Date(a.created_at), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })}
                         </div>
                       </div>
                     </div>

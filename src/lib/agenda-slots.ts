@@ -1,8 +1,5 @@
 import type { AgendaEvent, AgendaStatus } from "@/lib/agenda";
-import {
-  EXHUMATION_TIME_SLOTS,
-  type ExhumationTimeSlot,
-} from "@/lib/domain/exhumation-slots";
+import { EXHUMATION_TIME_SLOTS, type ExhumationTimeSlot } from "@/lib/domain/exhumation-slots";
 
 /**
  * Mapa da nomenclatura de status usada no runtime da agenda para a
@@ -29,13 +26,10 @@ function trimTime(value: string | null | undefined): string {
  * Calcula a ocupação dos três horários fixos da exumação para uma lista de
  * eventos já filtrada por data e agenda_type.
  */
-export function computeExhumationSlotUsage(
-  events: readonly AgendaEvent[],
-): ExhumationSlotUsage[] {
+export function computeExhumationSlotUsage(events: readonly AgendaEvent[]): ExhumationSlotUsage[] {
   return EXHUMATION_TIME_SLOTS.map((slot) => {
     const matching = events.filter(
-      (event) =>
-        trimTime(event.start_time) === slot && isAgendaStatusBlocking(event.status),
+      (event) => trimTime(event.start_time) === slot && isAgendaStatusBlocking(event.status),
     );
     return { slot, occupied: matching.length > 0, events: matching };
   });

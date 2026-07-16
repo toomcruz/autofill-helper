@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildAttendanceContext,
-  runtimeProcessToDomain,
-} from "@/lib/domain/context-adapter";
+import { buildAttendanceContext, runtimeProcessToDomain } from "@/lib/domain/context-adapter";
 import { getRequiredDocuments } from "@/lib/domain/documents";
 
 describe("runtimeProcessToDomain", () => {
@@ -13,9 +10,7 @@ describe("runtimeProcessToDomain", () => {
     expect(runtimeProcessToDomain("exumacao")).toBe("exumacao");
     expect(runtimeProcessToDomain("ossario")).toBe("ossario");
     expect(runtimeProcessToDomain("translado")).toBe("translado");
-    expect(runtimeProcessToDomain("atualizacao_cadastral")).toBe(
-      "atualizacao_cadastral",
-    );
+    expect(runtimeProcessToDomain("atualizacao_cadastral")).toBe("atualizacao_cadastral");
   });
   it("retorna null para valores desconhecidos", () => {
     expect(runtimeProcessToDomain("desconhecido")).toBeNull();

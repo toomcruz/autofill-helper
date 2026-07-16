@@ -165,9 +165,7 @@ export interface BuildTemplatePayloadResult {
  * modelo. Retorna também os placeholders sem valor, permitindo à UI marcar
  * o documento como incompleto.
  */
-export function buildTemplatePayload(
-  input: BuildTemplatePayloadInput,
-): BuildTemplatePayloadResult {
+export function buildTemplatePayload(input: BuildTemplatePayloadInput): BuildTemplatePayloadResult {
   const { documentSlug, canonicalData, confirmedRoles } = input;
   const map = PLACEHOLDER_MAP[documentSlug];
   if (!map) return { payload: {}, missing: [] };

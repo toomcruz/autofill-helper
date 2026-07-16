@@ -155,9 +155,6 @@ export async function deleteExhumationEvent(id: string): Promise<void> {
 }
 
 export async function updateExhumationStatus(id: string, status: AgendaStatus): Promise<void> {
-  const { error } = await supabase
-    .from("exhumation_appointments")
-    .update({ status })
-    .eq("id", id);
+  const { error } = await supabase.from("exhumation_appointments").update({ status }).eq("id", id);
   if (error) throw error;
 }

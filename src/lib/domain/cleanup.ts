@@ -31,11 +31,7 @@ const DESCENDANTS: Partial<Record<Key, Key[]>> = {
   ],
 
   // Ao mudar destino_fora_jazigo, os campos de destino saem.
-  destino_fora_jazigo: [
-    "destino_pos_exumacao",
-    "modalidade_ossario",
-    "tipo_translado",
-  ],
+  destino_fora_jazigo: ["destino_pos_exumacao", "modalidade_ossario", "tipo_translado"],
 
   // Ao mudar destino_pos_exumacao, os campos específicos do ramo saem.
   destino_pos_exumacao: ["modalidade_ossario", "tipo_translado"],

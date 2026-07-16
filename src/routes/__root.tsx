@@ -87,8 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Apoio ao Atendimento" },
       {
         property: "og:description",
-        content:
-          "Extraia dados de imagens e gere documentos preenchidos em segundos.",
+        content: "Extraia dados de imagens e gere documentos preenchidos em segundos.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

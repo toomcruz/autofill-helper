@@ -41,9 +41,10 @@ export function shouldCreateAgendaEvent(
  * agenda event. Non-empty existing values are preserved so extraction cannot
  * overwrite manual entries.
  */
-export function buildAgendaSyncPatch<
-  E extends Record<string, unknown>,
->(event: E, candidates: Record<string, string | null>): Record<string, string> {
+export function buildAgendaSyncPatch<E extends Record<string, unknown>>(
+  event: E,
+  candidates: Record<string, string | null>,
+): Record<string, string> {
   const patch: Record<string, string> = {};
   for (const [field, candidate] of Object.entries(candidates)) {
     const current = String(event[field] ?? "").trim();
@@ -68,10 +69,7 @@ export interface PpsScheduleInput {
 }
 
 export function isPpsSchedule(input: PpsScheduleInput): boolean {
-  return (
-    input.processKey === "exumacao" &&
-    input.tipoAgendaExumacao === "exumacao_pss"
-  );
+  return input.processKey === "exumacao" && input.tipoAgendaExumacao === "exumacao_pss";
 }
 
 export function validatePpsSchedule(input: PpsScheduleInput): string[] {
@@ -91,9 +89,7 @@ export function validatePpsSchedule(input: PpsScheduleInput): string[] {
   }
   const timeRaw = input.hora_agendamento?.trim();
   if (timeRaw && !isExhumationTimeSlot(timeRaw)) {
-    errors.push(
-      `Horário inválido para Exumação PSS. Use ${EXHUMATION_TIME_SLOTS.join(", ")}.`,
-    );
+    errors.push(`Horário inválido para Exumação PSS. Use ${EXHUMATION_TIME_SLOTS.join(", ")}.`);
   }
   return errors;
 }

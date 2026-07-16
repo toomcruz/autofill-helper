@@ -19,11 +19,7 @@ export const EXHUMATION_WORKING_DAYS = [1, 2, 3, 4, 5] as const;
  * Status values that keep an appointment slot occupied. Every other status
  * (cancelado, realizado, nao_compareceu) frees the slot.
  */
-export const EXHUMATION_SLOT_BLOCKING_STATUSES = [
-  "agendado",
-  "confirmado",
-  "em_execucao",
-] as const;
+export const EXHUMATION_SLOT_BLOCKING_STATUSES = ["agendado", "confirmado", "em_execucao"] as const;
 
 export type ExhumationAppointmentStatus =
   | "agendado"
@@ -44,8 +40,6 @@ export function isExhumationTimeSlot(value: string): value is ExhumationTimeSlot
   return (EXHUMATION_TIME_SLOTS as readonly string[]).includes(value);
 }
 
-export function isExhumationBlockingStatus(
-  status: ExhumationAppointmentStatus,
-): boolean {
+export function isExhumationBlockingStatus(status: ExhumationAppointmentStatus): boolean {
   return (EXHUMATION_SLOT_BLOCKING_STATUSES as readonly string[]).includes(status);
 }

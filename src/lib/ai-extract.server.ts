@@ -28,9 +28,11 @@ Regras:
 - CPF no formato 000.000.000-00.
 ${params.contextHints ? `\nContexto adicional: ${params.contextHints}` : ""}`;
 
-  const content: any[] = [
+  const content: Array<
+    { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+  > = [
     { type: "text", text: "Extraia os dados das imagens abaixo em JSON." },
-    ...params.imageDataUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+    ...params.imageDataUrls.map((url) => ({ type: "image_url" as const, image_url: { url } })),
   ];
 
   const res = await fetch(GATEWAY_URL, {
@@ -51,8 +53,10 @@ ${params.contextHints ? `\nContexto adicional: ${params.contextHints}` : ""}`;
 
   if (!res.ok) {
     const body = await res.text();
-    if (res.status === 429) throw new Error("Limite de requisições atingido. Tente novamente em instantes.");
-    if (res.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace.");
+    if (res.status === 429)
+      throw new Error("Limite de requisições atingido. Tente novamente em instantes.");
+    if (res.status === 402)
+      throw new Error("Créditos de IA esgotados. Adicione créditos no workspace.");
     throw new Error(`Falha na extração (${res.status}): ${body}`);
   }
 

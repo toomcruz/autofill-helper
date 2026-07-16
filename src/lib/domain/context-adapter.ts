@@ -9,9 +9,7 @@ import type { ProcessKey as RuntimeProcessKey } from "@/lib/processes";
  * every other process shares the same slug on both sides. This adapter is
  * the only place the two vocabularies meet — never rewrite the DB column.
  */
-export function runtimeProcessToDomain(
-  key: RuntimeProcessKey | string,
-): DomainProcessKey | null {
+export function runtimeProcessToDomain(key: RuntimeProcessKey | string): DomainProcessKey | null {
   switch (key) {
     case "sepultamento":
       return "velorio_sepultamento";
@@ -44,11 +42,7 @@ export function buildAttendanceContext(
   const ctx: AttendanceContext = { process };
 
   if (process === "ossario") {
-    if (
-      subprocess === "aluguel" ||
-      subprocess === "aquisicao" ||
-      subprocess === "renovacao"
-    ) {
+    if (subprocess === "aluguel" || subprocess === "aquisicao" || subprocess === "renovacao") {
       ctx.ossario_operacao = subprocess;
     }
   }
@@ -75,10 +69,7 @@ export function buildAttendanceContext(
     if (subprocess === "quadra_geral" || subprocess === "jazigo") {
       ctx.local_sepultamento_tipo = subprocess;
     }
-    if (
-      extras.exhumation_phase === "preparacao" ||
-      extras.exhumation_phase === "execucao"
-    ) {
+    if (extras.exhumation_phase === "preparacao" || extras.exhumation_phase === "execucao") {
       ctx.exhumation_phase = extras.exhumation_phase;
     }
   }

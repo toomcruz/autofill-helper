@@ -10,11 +10,7 @@
  *  - Descarta duplicatas e chaves fora do catálogo.
  */
 
-import {
-  FIELD_CATALOG,
-  type FieldDefinition,
-  type FieldSection,
-} from "./field-catalog";
+import { FIELD_CATALOG, type FieldDefinition, type FieldSection } from "./field-catalog";
 import type { AttendanceContext, DocumentSlug } from "./types";
 
 export interface ExpectedField {

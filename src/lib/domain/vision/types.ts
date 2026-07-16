@@ -168,12 +168,7 @@ export type ConfirmedField = {
 // -----------------------------------------------------------------------------
 
 export type ImageStatus =
-  | "pendente"
-  | "processando"
-  | "concluida"
-  | "precisa_revisao"
-  | "duplicada"
-  | "erro";
+  "pendente" | "processando" | "concluida" | "precisa_revisao" | "duplicada" | "erro";
 
 export type ImageRecord = {
   imageId: string;

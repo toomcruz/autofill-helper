@@ -57,7 +57,7 @@ export function validateDate(input: string | null | undefined): DateValidation {
   let month = 0;
   let day = 0;
 
-  const brMatch = raw.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  const brMatch = raw.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
   const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (brMatch) {
@@ -74,9 +74,7 @@ export function validateDate(input: string | null | undefined): DateValidation {
 
   const d = new Date(Date.UTC(year, month - 1, day));
   const valid =
-    d.getUTCFullYear() === year &&
-    d.getUTCMonth() === month - 1 &&
-    d.getUTCDate() === day;
+    d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
   const iso = valid
     ? `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
     : "";
@@ -151,7 +149,10 @@ export function validateTime(input: string | null | undefined): {
   if (h < 0 || h > 23 || mm < 0 || mm > 59) {
     return { valid: false, normalized: raw };
   }
-  return { valid: true, normalized: `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}` };
+  return {
+    valid: true,
+    normalized: `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`,
+  };
 }
 
 // ---------------- Nome ----------------
@@ -176,7 +177,7 @@ export function normalizeAdministrativeId(
   const raw = String(input ?? "").trim();
   if (!raw) return { valid: false, normalized: "" };
   if (allowAlphanumeric) {
-    return { valid: /^[A-Za-z0-9\-\/]+$/.test(raw), normalized: raw };
+    return { valid: /^[A-Za-z0-9/-]+$/.test(raw), normalized: raw };
   }
   const onlyDigits = raw.replace(/\s+/g, "");
   return { valid: /^\d+$/.test(onlyDigits), normalized: onlyDigits };

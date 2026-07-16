@@ -7,10 +7,7 @@
  *
  * Não toca em Supabase, não faz IO. Isolado para permitir testes unitários.
  */
-import type {
-  ExtractImageInput,
-  ExtractImageOutcome,
-} from "@/lib/vision/extract-image.server";
+import type { ExtractImageInput, ExtractImageOutcome } from "@/lib/vision/extract-image.server";
 import { extractImageBatch } from "@/lib/vision/extract-batch.server";
 import {
   initialVisionState,

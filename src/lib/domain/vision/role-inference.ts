@@ -60,7 +60,10 @@ const FALECIDO_EVIDENCE_TOKENS = [
 const DECLARANTE_TOKENS = ["declarante"];
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function hasToken(haystack: string, tokens: string[]): boolean {

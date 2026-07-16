@@ -13,9 +13,7 @@ describe("getRequiredDocuments — velório e sepultamento", () => {
       has_wake: "sim",
       burial_here: "nao",
     });
-    expect(s).toEqual(
-      expect.arrayContaining(["identificacao-sala-velorio", "condolencias"]),
-    );
+    expect(s).toEqual(expect.arrayContaining(["identificacao-sala-velorio", "condolencias"]));
     expect(s).not.toContain("ordem-sepultamento");
   });
 
@@ -93,10 +91,7 @@ describe("getRequiredDocuments — exumação preparação", () => {
       local_sepultamento_tipo: "jazigo",
     });
     expect(s).toEqual(
-      expect.arrayContaining([
-        "ordem-exumacao",
-        "termo-compromisso-responsabilidade",
-      ]),
+      expect.arrayContaining(["ordem-exumacao", "termo-compromisso-responsabilidade"]),
     );
   });
 });
@@ -201,19 +196,15 @@ describe("getRequiredDocuments — exumação execução", () => {
 
 describe("getRequiredDocuments — ossário / translado / atualização cadastral", () => {
   it("ossário renovação usa o modelo oficial existente", () => {
-    expect(
-      slugs({ process: "ossario", ossario_operacao: "renovacao" }),
-    ).toEqual(["aquisicao-renovacao-ossuario"]);
+    expect(slugs({ process: "ossario", ossario_operacao: "renovacao" })).toEqual([
+      "aquisicao-renovacao-ossuario",
+    ]);
   });
   it("translado independente", () => {
-    expect(slugs({ process: "translado" })).toEqual([
-      "memorando-autorizacao-translado",
-    ]);
+    expect(slugs({ process: "translado" })).toEqual(["memorando-autorizacao-translado"]);
   });
   it("atualização cadastral", () => {
-    expect(slugs({ process: "atualizacao_cadastral" })).toEqual([
-      "atualizacao-cadastral",
-    ]);
+    expect(slugs({ process: "atualizacao_cadastral" })).toEqual(["atualizacao-cadastral"]);
   });
   it("relação de registros do jazigo: sem modelo oficial hoje", () => {
     expect(slugs({ process: "relacao_registros_jazigo" })).toEqual([]);
@@ -229,9 +220,7 @@ describe("getRequiredDocuments — sem duplicidades", () => {
       local_sepultamento_tipo: "jazigo",
       jazigo_possui_gaveta_disponivel: "nao",
     });
-    const termos = docs.filter(
-      (d) => d.slug === "termo-compromisso-responsabilidade",
-    );
+    const termos = docs.filter((d) => d.slug === "termo-compromisso-responsabilidade");
     expect(termos).toHaveLength(1);
   });
 });

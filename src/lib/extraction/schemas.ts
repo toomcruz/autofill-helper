@@ -2,12 +2,7 @@
 // bordas de valor ficam nos validators, para evitar 400/AI_NoObjectGeneratedError.
 
 import { z } from "zod";
-import {
-  DOCUMENT_TYPES,
-  ENTITY_TYPES,
-  FIELD_STATUSES,
-  type AIResponse,
-} from "./types";
+import { DOCUMENT_TYPES, ENTITY_TYPES, FIELD_STATUSES, type AIResponse } from "./types";
 
 const documentTypeSchema = z.enum(DOCUMENT_TYPES);
 const entityTypeSchema = z.enum(ENTITY_TYPES);
@@ -56,9 +51,7 @@ export const AIResponseSchema = z.object({
 
 export type AIResponseParsed = z.infer<typeof AIResponseSchema>;
 
-export type ParseResult =
-  | { ok: true; data: AIResponse }
-  | { ok: false; error: string };
+export type ParseResult = { ok: true; data: AIResponse } | { ok: false; error: string };
 
 /**
  * Interpreta uma resposta bruta da IA.
@@ -84,7 +77,10 @@ export function parseAIResponse(raw: unknown): ParseResult {
   if (!result.success) {
     const first = result.error.issues[0];
     const path = first?.path.join(".") || "(raiz)";
-    return { ok: false, error: `Schema inválido em ${path}: ${first?.message ?? "erro desconhecido"}` };
+    return {
+      ok: false,
+      error: `Schema inválido em ${path}: ${first?.message ?? "erro desconhecido"}`,
+    };
   }
   return { ok: true, data: result.data };
 }

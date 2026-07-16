@@ -302,7 +302,15 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     label: "Referência PPS",
     entity: "atendimento",
     // PPS = Exumação para Pronto Sepultamento. Mantém aliases PSS para leitura de dados legados.
-    aliases: ["referencia_pss", "referenciapps", "referenciapss", "num_pps", "num_pss", "numero_pps", "numero_pss"],
+    aliases: [
+      "referencia_pss",
+      "referenciapps",
+      "referenciapss",
+      "num_pps",
+      "num_pss",
+      "numero_pps",
+      "numero_pss",
+    ],
     type: "text",
     processes: ["exumacao"],
     validator: "preserve",
@@ -350,6 +358,7 @@ export function getFieldByAlias(alias: string): FieldDefinition | undefined {
 
 export function getFieldsForProcess(process: string): FieldDefinition[] {
   return FIELD_CATALOG.filter(
-    (field) => field.processes.includes("*") || field.processes.includes(process as ApplicableProcess),
+    (field) =>
+      field.processes.includes("*") || field.processes.includes(process as ApplicableProcess),
   );
 }

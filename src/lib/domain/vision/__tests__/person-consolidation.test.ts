@@ -64,9 +64,7 @@ describe("consolidatePersons", () => {
           imageId: "img1",
           raw: raw("t1", "Carlos", {
             cpf: "52998224725",
-            roleCandidates: [
-              { role: "responsavel", confidence: 0.9, evidence: "Responsável" },
-            ],
+            roleCandidates: [{ role: "responsavel", confidence: 0.9, evidence: "Responsável" }],
           }),
         },
         {

@@ -43,8 +43,7 @@ function NewAttendance() {
   const [submitting, setSubmitting] = useState(false);
 
   const proc = getProcess(processKey);
-  const isPps =
-    processKey === "exumacao" && extras.tipo_agenda_exumacao === "exumacao_pss";
+  const isPps = processKey === "exumacao" && extras.tipo_agenda_exumacao === "exumacao_pss";
   const visibleExtraFields = (
     proc?.extraFields?.filter(
       (field) => !field.showWhen || extras[field.showWhen.field] === field.showWhen.equals,

@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -28,6 +28,9 @@ jobs:
       - name: Check formatting
         run: |
           bunx prettier --check \
+            .github/workflows/validate.yml \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \
@@ -39,15 +42,84 @@ jobs:
             src/routes/_authed.modelos.tsx \
             src/routes/_authed.tsx
 
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: TypeScript
         run: bunx tsc --noEmit
+
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Tests
+        run: bunx vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Build
         run: bun run build
 
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Lint changed files
         run: |
           bunx eslint \
+            src/lib/docx.server.ts \
+            src/lib/__tests__/docx.test.ts \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \

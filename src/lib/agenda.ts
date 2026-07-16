@@ -77,8 +77,7 @@ export const AGENDA_TYPES: Array<{
   {
     value: "exumacao_pss",
     label: "Exumação PPS",
-    description:
-      "Exumação para Pronto Sepultamento (PPS) — agenda separada com horários fixos.",
+    description: "Exumação para Pronto Sepultamento (PPS) — agenda separada com horários fixos.",
   },
 ];
 

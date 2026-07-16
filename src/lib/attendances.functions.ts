@@ -186,12 +186,7 @@ export const extractAttendanceData = createServerFn({ method: "POST" })
       .eq("id", data.attendanceId);
     if (saveError) throw new Error(saveError.message);
 
-    const agendaSynced = await syncLinkedAgenda(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      supabase,
-      data.attendanceId,
-      extracted,
-    );
+    const agendaSynced = await syncLinkedAgenda(supabase, data.attendanceId, extracted);
 
     return { data: extracted, agendaSynced };
   });

@@ -80,20 +80,12 @@ async function syncLinkedAgenda(
     ]),
   };
 
-  const patch: Database["public"]["Tables"]["agenda_events"]["Update"] = {};
-  for (const [field, candidate] of Object.entries(candidates) as Array<
-    [keyof typeof candidates, string | null]
-  >) {
-    const current = event[field as keyof typeof event];
-    if (!String(current ?? "").trim() && candidate) {
-      (patch as Record<string, string>)[field] = candidate;
-    }
-  }
+  const patch = buildAgendaSyncPatch(event as Record<string, unknown>, candidates);
 
   if (!Object.keys(patch).length) return true;
   const { error: updateError } = await supabaseClient
     .from("agenda_events")
-    .update(patch)
+    .update(patch as Database["public"]["Tables"]["agenda_events"]["Update"])
     .eq("id", event.id);
   return !updateError;
 }

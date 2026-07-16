@@ -373,7 +373,7 @@ export const FIELD_CATALOG: readonly FieldDefinition[] = [
     section: "jazigo",
     entityRole: "jazigo",
     dataType: "identifier",
-    aliases: ["inscricao_gs", "inscrgs", "inscrgscemi", "numero_inscricao"],
+    aliases: ["inscricao_gs", "inscrgs", "inscr_gs", "inscrgscemi", "inscr_gscemi", "numero_inscricao", "inscricao_g_s"],
     applicableProcesses: [
       "velorio_sepultamento",
       "exumacao",

@@ -16,10 +16,12 @@ import {
 import { PROCESSES, getProcess, type ProcessExtraField } from "@/lib/processes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CalendarDays, Loader2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, FileText, Loader2, Upload, X } from "lucide-react";
 import type { AgendaType } from "@/lib/agenda";
 import { resolveAgendaType, shouldCreateAgendaEvent, validatePpsSchedule } from "@/lib/agenda-sync";
 import { EXHUMATION_TIME_SLOTS } from "@/lib/domain/exhumation-slots";
+import { buildAttendanceContext } from "@/lib/domain/context-adapter";
+import { getRequiredDocuments } from "@/lib/domain/documents";
 import { getErrorMessage } from "@/lib/error-message";
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
@@ -59,6 +61,12 @@ function NewAttendance() {
     }
     return field;
   });
+
+  const previewedDocuments = (() => {
+    if (!proc) return [];
+    const ctx = buildAttendanceContext(proc.key, subprocess, extras);
+    return ctx ? getRequiredDocuments(ctx) : [];
+  })();
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -252,6 +260,26 @@ function NewAttendance() {
             )}
 
             <ExtraFields fields={visibleExtraFields} values={extras} onChange={updateExtra} />
+
+            {previewedDocuments.length > 0 && (
+              <div className="rounded-md border bg-muted/25 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Documentos previstos para este atendimento
+                </div>
+                <ul className="space-y-1 text-sm">
+                  {previewedDocuments.map((doc) => (
+                    <li key={doc.slug} className="flex flex-col">
+                      <span className="font-medium">{doc.slug}</span>
+                      <span className="text-xs text-muted-foreground">{doc.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  Lista preliminar — pode mudar após a IA processar as imagens.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Observações (opcional)</Label>

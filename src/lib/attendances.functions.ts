@@ -230,7 +230,7 @@ export const generateDocument = createServerFn({ method: "POST" })
     // Wrap Uint8Array in a Blob so supabase-js uploads raw binary bytes.
     // Uploading a bare Uint8Array on the edge runtime can be serialized as
     // JSON/text and produce a corrupted .docx that Word refuses to open.
-    const docxBlob = new Blob([filled], {
+    const docxBlob = new Blob([filled.buffer as ArrayBuffer], {
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
 

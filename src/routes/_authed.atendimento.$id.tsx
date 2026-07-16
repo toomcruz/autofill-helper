@@ -9,10 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { getProcess } from "@/lib/processes";
 import { getErrorMessage } from "@/lib/error-message";
 import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
+import { extractAttendanceVision } from "@/lib/vision/extract-attendance.functions";
+import { flattenVisionState } from "@/lib/vision/flatten-vision";
+import type { VisionState } from "@/lib/vision/attendance-vision-store";
+import type { FlatFieldMeta } from "@/lib/vision/flatten-vision";
 import { isTemplateApplicable } from "@/lib/official-templates";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({

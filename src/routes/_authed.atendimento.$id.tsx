@@ -277,7 +277,7 @@ function AttendanceDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={triggerExtract}
+                onClick={() => triggerExtract(false)}
                 disabled={extracting}
                 className="gap-2"
               >

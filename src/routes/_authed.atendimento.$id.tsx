@@ -9,10 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { getProcess } from "@/lib/processes";
 import { getErrorMessage } from "@/lib/error-message";
 import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
+import { extractAttendanceVision } from "@/lib/vision/extract-attendance.functions";
+import { flattenVisionState } from "@/lib/vision/flatten-vision";
+import type { VisionState } from "@/lib/vision/attendance-vision-store";
+import type { FlatFieldMeta } from "@/lib/vision/flatten-vision";
 import { isTemplateApplicable } from "@/lib/official-templates";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
@@ -24,6 +28,7 @@ function AttendanceDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const extractFn = useServerFn(extractAttendanceData);
+  const extractVisionFn = useServerFn(extractAttendanceVision);
   const generateFn = useServerFn(generateDocument);
   const signFn = useServerFn(getSignedUrl);
 
@@ -85,7 +90,26 @@ function AttendanceDetail() {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (att?.extracted_data) setFields(att.extracted_data as Record<string, string>);
+    if (att?.extracted_data) {
+      const raw = att.extracted_data as Record<string, unknown>;
+      const flat: Record<string, string> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        if (k.startsWith("_")) continue;
+        if (typeof v === "string") flat[k] = v;
+      }
+      setFields(flat);
+    }
+  }, [att?.extracted_data]);
+
+  // Metadados de confiança/conflito derivados do estado de visão salvo.
+  const fieldMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
+    const raw = att?.extracted_data as Record<string, unknown> | undefined;
+    if (!raw) return {};
+    const savedMeta = raw._visionMeta as Record<string, FlatFieldMeta> | undefined;
+    if (savedMeta) return savedMeta;
+    const state = raw._vision as VisionState | undefined;
+    if (!state) return {};
+    return flattenVisionState(state).meta;
   }, [att?.extracted_data]);
 
   const applicableTemplates = useMemo(() => {
@@ -114,10 +138,21 @@ function AttendanceDetail() {
   async function triggerExtract(autoGenerate = false) {
     setExtracting(true);
     try {
-      const result = await extractFn({ data: { attendanceId: id } });
+      // Novo pipeline (extração por imagem, consolidação, validações).
+      let extracted: Record<string, string> = {};
+      let usedFallback = false;
+      try {
+        const visionResult = await extractVisionFn({ data: { attendanceId: id } });
+        extracted = (visionResult?.data ?? {}) as Record<string, string>;
+      } catch (visionError: unknown) {
+        // Fallback automático: extrator legado.
+        usedFallback = true;
+        console.warn("[vision] fallback ativado:", getErrorMessage(visionError, ""));
+        const legacy = await extractFn({ data: { attendanceId: id } });
+        extracted = (legacy?.data ?? {}) as Record<string, string>;
+      }
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
-      toast.success("Dados extraídos");
-      const extracted = (result?.data ?? {}) as Record<string, string>;
+      toast.success(usedFallback ? "Dados extraídos (modo legado)" : "Dados extraídos");
       setFields(extracted);
       if (autoGenerate && att) {
         const applicable = (templates ?? []).filter((template) =>
@@ -306,18 +341,57 @@ function AttendanceDetail() {
                 </p>
               )}
               <div className="grid sm:grid-cols-2 gap-3">
-                {allFields.map((key) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={key} className="text-xs">
-                      {key}
-                    </Label>
-                    <Input
-                      id={key}
-                      value={fields[key] ?? ""}
-                      onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
-                    />
-                  </div>
-                ))}
+                {allFields.map((key) => {
+                  const m = fieldMeta[key];
+                  const band = m?.hasConflict
+                    ? "conflito"
+                    : m?.confirmedByUser
+                      ? "confirmado"
+                      : m
+                        ? m.confidence >= 0.9
+                          ? "alta"
+                          : m.confidence >= 0.75
+                            ? "revisar"
+                            : "baixa"
+                        : null;
+                  return (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Label htmlFor={key} className="text-xs">
+                          {key}
+                        </Label>
+                        {band === "conflito" && (
+                          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5" /> conflito
+                          </Badge>
+                        )}
+                        {band === "confirmado" && (
+                          <Badge variant="outline" className="h-4 text-[10px] gap-1 border-emerald-500 text-emerald-600">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> confirmado
+                          </Badge>
+                        )}
+                        {band === "alta" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-emerald-500 text-emerald-600">alta</Badge>
+                        )}
+                        {band === "revisar" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">revisar</Badge>
+                        )}
+                        {band === "baixa" && (
+                          <Badge variant="outline" className="h-4 text-[10px] border-destructive text-destructive">baixa</Badge>
+                        )}
+                        {m?.source && (
+                          <span className="text-[10px] text-muted-foreground">via {String(m.source).replace(/_/g, " ")}</span>
+                        )}
+                      </div>
+                      <Input
+                        id={key}
+                        value={fields[key] ?? ""}
+                        onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
+                        className={m?.hasConflict ? "border-destructive" : undefined}
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <Button

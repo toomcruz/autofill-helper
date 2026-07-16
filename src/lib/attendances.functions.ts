@@ -14,7 +14,7 @@ function firstExtractedValue(extracted: Record<string, string>, keys: string[]):
   return null;
 }
 
-async function syncLinkedAgenda(
+export async function syncLinkedAgenda(
   supabaseClient: SupabaseClient<Database>,
   attendanceId: string,
   extracted: Record<string, string>,

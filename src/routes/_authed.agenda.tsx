@@ -653,20 +653,40 @@ function AgendaDialog({
               onChange={(event) => onChange("event_date", event.target.value)}
             />
           </Field>
-          <Field label={wake ? "Início do velório" : "Horário"}>
-            <Input
-              type="time"
-              value={draft.start_time}
-              onChange={(event) => onChange("start_time", event.target.value)}
-            />
+          <Field label={exumation ? "Horário (slot)" : wake ? "Início do velório" : "Horário"}>
+            {exumation ? (
+              <Select
+                value={draft.start_time || undefined}
+                onValueChange={(value) => onChange("start_time", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o slot" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXHUMATION_TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot} value={slot}>
+                      {slot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                type="time"
+                value={draft.start_time}
+                onChange={(event) => onChange("start_time", event.target.value)}
+              />
+            )}
           </Field>
-          <Field label={wake ? "Fim do velório" : "Horário final (opcional)"}>
-            <Input
-              type="time"
-              value={draft.end_time}
-              onChange={(event) => onChange("end_time", event.target.value)}
-            />
-          </Field>
+          {!exumation && (
+            <Field label={wake ? "Fim do velório" : "Horário final (opcional)"}>
+              <Input
+                type="time"
+                value={draft.end_time}
+                onChange={(event) => onChange("end_time", event.target.value)}
+              />
+            </Field>
+          )}
           <Field label="Nome da pessoa falecida" className="sm:col-span-2">
             <Input
               value={draft.deceased_name}

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CalendarDays, Loader2, Upload, X } from "lucide-react";
 import type { AgendaType } from "@/lib/agenda";
+import { resolveAgendaType, shouldCreateAgendaEvent } from "@/lib/agenda-sync";
 import { getErrorMessage } from "@/lib/error-message";
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({

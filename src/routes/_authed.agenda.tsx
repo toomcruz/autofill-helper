@@ -100,6 +100,9 @@ function OperationalAgenda() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["agenda-events", agendaType, selectedDate],
     queryFn: async () => {
+      if (isExhumationAgendaType(agendaType)) {
+        return fetchExhumationEvents(agendaType, selectedDate);
+      }
       const { data, error } = await db
         .from("agenda_events")
         .select("*")

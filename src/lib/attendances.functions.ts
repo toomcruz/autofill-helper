@@ -14,9 +14,7 @@ function firstExtractedValue(extracted: Record<string, string>, keys: string[]):
 }
 
 async function syncLinkedAgenda(
-  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabaseClient: any,
+  supabaseClient: SupabaseClient<Database>,
   attendanceId: string,
   extracted: Record<string, string>,
 ): Promise<boolean> {

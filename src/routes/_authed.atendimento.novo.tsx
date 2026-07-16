@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CalendarDays, Loader2, Upload, X } from "lucide-react";
 import type { AgendaType } from "@/lib/agenda";
+import { resolveAgendaType, shouldCreateAgendaEvent } from "@/lib/agenda-sync";
 import { getErrorMessage } from "@/lib/error-message";
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
@@ -26,9 +27,7 @@ export const Route = createFileRoute("/_authed/atendimento/novo")({
 
 type Step = "process" | "details" | "upload";
 
-// agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any;
+const db = supabase;
 
 function NewAttendance() {
   const navigate = useNavigate();
@@ -80,15 +79,10 @@ function NewAttendance() {
   }
 
   async function createLinkedAgendaEvent(attendanceId: string, userId: string): Promise<void> {
-    const eventDate = extras.data_agendada?.trim();
-    if (!eventDate || !proc || !["sepultamento", "exumacao"].includes(proc.key)) return;
-
-    const agendaType: AgendaType =
-      proc.key === "sepultamento"
-        ? "velorio_sepultamento"
-        : extras.tipo_agenda_exumacao === "exumacao_pss"
-          ? "exumacao_pss"
-          : "exumacao";
+    if (!proc || !shouldCreateAgendaEvent(proc.key, extras)) return;
+    const eventDate = extras.data_agendada!.trim();
+    const agendaType = resolveAgendaType(proc.key, extras.tipo_agenda_exumacao);
+    if (!agendaType) return;
 
     const { error } = await db.from("agenda_events").insert({
       user_id: userId,

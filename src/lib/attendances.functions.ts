@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { buildAgendaSyncPatch } from "@/lib/agenda-sync";
 import { applyOfficialTemplateAliases } from "@/lib/official-templates";
+import type { Database } from "@/integrations/supabase/types";
 import { z } from "zod";
 
 function firstExtractedValue(extracted: Record<string, string>, keys: string[]): string | null {
@@ -12,9 +15,7 @@ function firstExtractedValue(extracted: Record<string, string>, keys: string[]):
 }
 
 async function syncLinkedAgenda(
-  // agenda_events is introduced by the migration in this change; generated Supabase types will be refreshed after migration.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabaseClient: any,
+  supabaseClient: SupabaseClient<Database>,
   attendanceId: string,
   extracted: Record<string, string>,
 ): Promise<boolean> {
@@ -80,15 +81,12 @@ async function syncLinkedAgenda(
     ]),
   };
 
-  const patch: Record<string, string> = {};
-  for (const [field, candidate] of Object.entries(candidates)) {
-    if (!String(event[field] ?? "").trim() && candidate) patch[field] = candidate;
-  }
+  const patch = buildAgendaSyncPatch(event as Record<string, unknown>, candidates);
 
   if (!Object.keys(patch).length) return true;
   const { error: updateError } = await supabaseClient
     .from("agenda_events")
-    .update(patch)
+    .update(patch as Database["public"]["Tables"]["agenda_events"]["Update"])
     .eq("id", event.id);
   return !updateError;
 }

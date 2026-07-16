@@ -293,7 +293,7 @@ function OperationalAgenda() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Agenda operacional</h1>
           <p className="text-sm text-muted-foreground">
-            Exumação, velório, sepultamento e PSS em um único módulo, sem criar cadastro de família.
+            Exumação, velório, sepultamento e PPS em um único módulo, sem criar cadastro de família.
           </p>
         </div>
         <Button onClick={openNew} className="gap-2">
@@ -546,7 +546,7 @@ function AgendaEventCard({
               )}
               {event.pss_reference && (
                 <div>
-                  <span className="text-muted-foreground">Referência PSS:</span>{" "}
+                  <span className="text-muted-foreground">Referência PPS:</span>{" "}
                   {event.pss_reference}
                 </div>
               )}
@@ -840,7 +840,7 @@ function AgendaDialog({
           )}
 
           {draft.agenda_type === "exumacao_pss" && (
-            <Field label="Número / referência PSS" className="sm:col-span-2">
+            <Field label="Número / referência PPS" className="sm:col-span-2">
               <Input
                 value={draft.pss_reference}
                 onChange={(event) => onChange("pss_reference", event.target.value)}

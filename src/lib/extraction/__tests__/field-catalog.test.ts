@@ -49,7 +49,7 @@ describe("FIELD_CATALOG", () => {
   it("getFieldsForProcess não vaza campos de outro processo", () => {
     const exu = getFieldsForProcess("exumacao");
     expect(exu.some((field) => field.key === "sala_velorio")).toBe(false);
-    expect(exu.some((field) => field.key === "referencia_pss")).toBe(true);
+    expect(exu.some((field) => field.key === "referencia_pps")).toBe(true);
   });
 
   it("todo campo com validator aponta para um validador conhecido", () => {

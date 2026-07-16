@@ -1,3 +1,4 @@
+# Temporary one-shot workflow for PR #8.
 name: Sanitize official DOCX templates
 
 on:

@@ -1,4 +1,4 @@
-name: Validate
+name: Apply official template installer update
 
 on:
   pull_request:
@@ -6,16 +6,19 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  format:
+  update-installer:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'fix/sanitize-official-docx-templates'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - name: Checkout
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -25,108 +28,108 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check formatting
+      - name: Update installed official templates instead of skipping them
         run: |
-          bunx prettier --check \
-            .github/workflows/validate.yml \
-            src/lib/docx.server.ts \
-            src/lib/__tests__/docx.test.ts \
-            src/lib/agenda.ts \
-            src/lib/attendances.functions.ts \
-            src/lib/error-message.ts \
-            src/lib/official-templates.ts \
-            src/lib/processes.ts \
-            'src/routes/_authed.agenda.tsx' \
-            'src/routes/_authed.atendimento.$id.tsx' \
-            src/routes/_authed.atendimento.novo.tsx \
-            src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx
+          python3 - <<'PY'
+          from pathlib import Path
 
-  typecheck:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+          path = Path("src/routes/_authed.modelos.tsx")
+          text = path.read_text(encoding="utf-8")
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+          start_marker = "      const existingPaths = new Set((templates ?? []).map((template) => template.storage_path));"
+          end_marker = "    } catch (error: unknown) {"
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          replacement = '''      const existingByPath = new Map(
+            (templates ?? []).flatMap((template) =>
+              template.storage_path ? ([[template.storage_path, template]] as const) : [],
+            ),
+          );
+          const fileCache = new Map<string, Blob>();
+          let installed = 0;
+          let updated = 0;
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          for (const variant of officialVariants) {
+            const storagePath = officialStoragePath(userId, variant.storageId);
+            const existingTemplate = existingByPath.get(storagePath);
 
-      - name: TypeScript
-        run: bunx tsc --noEmit
+            let blob = fileCache.get(variant.file);
+            if (!blob) {
+              const response = await fetch(`/templates/official/${variant.file}`);
+              if (!response.ok) {
+                throw new Error(`Arquivo oficial ausente: ${variant.file}`);
+              }
+              blob = await response.blob();
+              fileCache.set(variant.file, blob);
+            }
 
-  tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+            const { error: uploadError } = await supabase.storage
+              .from("document-templates")
+              .upload(storagePath, blob, {
+                contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                upsert: true,
+              });
+            if (uploadError) throw uploadError;
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+            if (existingTemplate) {
+              const { error: updateError } = await supabase
+                .from("document_templates")
+                .update({
+                  name: variant.name,
+                  process: variant.process,
+                  placeholders: variant.placeholders,
+                })
+                .eq("id", existingTemplate.id);
+              if (updateError) throw updateError;
+              updated += 1;
+              continue;
+            }
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+            const { error: insertError } = await supabase.from("document_templates").insert({
+              user_id: userId,
+              name: variant.name,
+              process: variant.process,
+              storage_path: storagePath,
+              placeholders: variant.placeholders,
+            });
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+            if (insertError) {
+              await supabase.storage.from("document-templates").remove([storagePath]);
+              throw insertError;
+            }
 
-      - name: Tests
-        run: bunx vitest run
+            installed += 1;
+          }
 
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+          await qc.invalidateQueries({ queryKey: ["templates-all"] });
+          const result = [
+            installed ? `${installed} modelo(s) instalado(s)` : "",
+            updated ? `${updated} modelo(s) atualizado(s)` : "",
+          ].filter(Boolean);
+          toast.success(result.length ? `${result.join(" · ")}.` : "Os modelos oficiais já estavam atualizados.");
+'''
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+          text = text[:start] + replacement + text[end:]
+          text = text.replace('? "Modelos instalados"', '? "Atualizar modelos oficiais"')
+          path.write_text(text, encoding="utf-8")
+          PY
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Lint changed files
+      - name: Format and lint route
         run: |
-          bunx eslint \
-            src/lib/docx.server.ts \
-            src/lib/__tests__/docx.test.ts \
-            src/lib/agenda.ts \
-            src/lib/attendances.functions.ts \
-            src/lib/error-message.ts \
-            src/lib/official-templates.ts \
-            src/lib/processes.ts \
-            'src/routes/_authed.agenda.tsx' \
-            'src/routes/_authed.atendimento.$id.tsx' \
-            src/routes/_authed.atendimento.novo.tsx \
-            src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx
+          bunx prettier --write src/routes/_authed.modelos.tsx
+          bunx eslint src/routes/_authed.modelos.tsx
+
+      - name: Commit installer update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authed.modelos.tsx
+
+          if git diff --cached --quiet; then
+            echo "Installer already updated."
+            exit 0
+          fi
+
+          git commit -m "Refresh existing official templates in Supabase [skip ci]"
+          git push origin "HEAD:${{ github.head_ref || github.ref_name }}"

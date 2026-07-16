@@ -138,17 +138,18 @@ function Templates() {
       const userId = userRes.user?.id;
       if (!userId) throw new Error("Sessão expirada");
 
-      const existingPaths = new Set((templates ?? []).map((template) => template.storage_path));
+      const existingByPath = new Map(
+        (templates ?? []).flatMap((template) =>
+          template.storage_path ? ([[template.storage_path, template]] as const) : [],
+        ),
+      );
       const fileCache = new Map<string, Blob>();
       let installed = 0;
-      let skipped = 0;
+      let updated = 0;
 
       for (const variant of officialVariants) {
         const storagePath = officialStoragePath(userId, variant.storageId);
-        if (existingPaths.has(storagePath)) {
-          skipped += 1;
-          continue;
-        }
+        const existingTemplate = existingByPath.get(storagePath);
 
         let blob = fileCache.get(variant.file);
         if (!blob) {
@@ -168,6 +169,20 @@ function Templates() {
           });
         if (uploadError) throw uploadError;
 
+        if (existingTemplate) {
+          const { error: updateError } = await supabase
+            .from("document_templates")
+            .update({
+              name: variant.name,
+              process: variant.process,
+              placeholders: variant.placeholders,
+            })
+            .eq("id", existingTemplate.id);
+          if (updateError) throw updateError;
+          updated += 1;
+          continue;
+        }
+
         const { error: insertError } = await supabase.from("document_templates").insert({
           user_id: userId,
           name: variant.name,
@@ -181,18 +196,17 @@ function Templates() {
           throw insertError;
         }
 
-        existingPaths.add(storagePath);
         installed += 1;
       }
 
       await qc.invalidateQueries({ queryKey: ["templates-all"] });
-      if (installed === 0) {
-        toast.success("Os modelos oficiais já estavam instalados.");
-      } else {
-        toast.success(
-          `${installed} modelo(s) oficial(is) instalado(s)${skipped ? ` · ${skipped} já existia(m)` : ""}.`,
-        );
-      }
+      const result = [
+        installed ? `${installed} modelo(s) instalado(s)` : "",
+        updated ? `${updated} modelo(s) atualizado(s)` : "",
+      ].filter(Boolean);
+      toast.success(
+        result.length ? `${result.join(" · ")}.` : "Os modelos oficiais já estavam atualizados.",
+      );
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, "Erro ao instalar modelos oficiais"));
     } finally {
@@ -247,7 +261,7 @@ function Templates() {
               <FileCheck2 className="h-4 w-4 mr-2" />
             )}
             {installedOfficialCount === officialVariants.length && officialVariants.length > 0
-              ? "Modelos instalados"
+              ? "Atualizar modelos oficiais"
               : "Instalar modelos oficiais"}
           </Button>
         </CardHeader>

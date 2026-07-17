@@ -311,7 +311,11 @@ function AttendanceDetail() {
     const { error } = await supabase
       .from("attendances")
       .update({
-        extracted_data: buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta),
+        extracted_data: buildPersistedExtractedData(
+          att.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
         status: "reviewing",
       })
       .eq("id", id);
@@ -336,7 +340,11 @@ function AttendanceDetail() {
     await supabase
       .from("attendances")
       .update({
-        extracted_data: buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta),
+        extracted_data: buildPersistedExtractedData(
+          att.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
       })
       .eq("id", id);
     setGeneratingId(templateId);
@@ -359,7 +367,11 @@ function AttendanceDetail() {
     await supabase
       .from("attendances")
       .update({
-        extracted_data: buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta),
+        extracted_data: buildPersistedExtractedData(
+          att.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
       })
       .eq("id", id);
     for (const template of applicableTemplates) {

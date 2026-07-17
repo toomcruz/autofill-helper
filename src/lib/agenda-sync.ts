@@ -26,12 +26,19 @@ export function resolveAgendaType(
   return null;
 }
 
-/** Determines whether an attendance should produce an agenda event. */
+/**
+ * Determines whether a new attendance should automatically produce an agenda
+ * event.
+ *
+ * Velório e sepultamento are intentionally managed in the standalone Agenda
+ * module because an event may exist before any documentation or attendance.
+ * Exhumation keeps its current automatic linkage flow.
+ */
 export function shouldCreateAgendaEvent(
   processKey: ProcessKey,
   extras: Record<string, string | undefined>,
 ): boolean {
-  if (processKey !== "sepultamento" && processKey !== "exumacao") return false;
+  if (processKey !== "exumacao") return false;
   const eventDate = extras.data_agendada?.trim();
   return Boolean(eventDate);
 }

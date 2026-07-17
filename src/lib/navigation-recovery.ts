@@ -21,9 +21,7 @@ export function navigationErrorMessage(error: unknown): string {
 
 export function isDynamicImportLoadError(error: unknown): boolean {
   const message = navigationErrorMessage(error).toLocaleLowerCase("en-US");
-  return DYNAMIC_IMPORT_ERROR_PATTERNS.some((pattern) =>
-    message.includes(pattern),
-  );
+  return DYNAMIC_IMPORT_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
 }
 
 export function canReloadNavigation(
@@ -51,8 +49,7 @@ function markNavigationReload(): boolean {
 }
 
 export function reloadForDynamicImportError(error: unknown): boolean {
-  if (typeof window === "undefined" || !isDynamicImportLoadError(error))
-    return false;
+  if (typeof window === "undefined" || !isDynamicImportLoadError(error)) return false;
   if (!markNavigationReload()) return false;
   window.location.reload();
   return true;
@@ -69,6 +66,5 @@ export function registerVitePreloadRecovery(): () => void {
   };
 
   window.addEventListener("vite:preloadError", handlePreloadError);
-  return () =>
-    window.removeEventListener("vite:preloadError", handlePreloadError);
+  return () => window.removeEventListener("vite:preloadError", handlePreloadError);
 }

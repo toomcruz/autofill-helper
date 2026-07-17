@@ -527,22 +527,6 @@ function AttendanceDetail() {
   );
 }
 
-function ImageThumb({ path }: { path: string }) {
-  const [url, setUrl] = useState<string>();
-  useEffect(() => {
-    supabase.storage
-      .from("attendance-images")
-      .createSignedUrl(path, 600)
-      .then(({ data }) => {
-        if (data?.signedUrl) setUrl(data.signedUrl);
-      });
-  }, [path]);
-  return (
-    <div className="aspect-square rounded-md overflow-hidden border bg-muted">
-      {url && <img src={url} alt="" className="w-full h-full object-cover" />}
-    </div>
-  );
-}
 
 interface FieldRowProps {
   fieldKey: string;

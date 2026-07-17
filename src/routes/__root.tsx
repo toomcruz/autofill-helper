@@ -88,17 +88,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Extraia dados de imagens e gere documentos preenchidos em segundos.",
+          "Sistema de apoio ao atendimento: extrai dados de fotos e prints e preenche documentos automaticamente.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Apoio ao Atendimento" },
+      { name: "twitter:description", content: "Sistema de apoio ao atendimento: extrai dados de fotos e prints e preenche documentos automaticamente." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,

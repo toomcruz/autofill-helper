@@ -1,0 +1,58 @@
+name: Fix triagem JSON type
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'fix/triagem-source-of-truth' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/triagem-source-of-truth
+          fetch-depth: 0
+
+      - name: Fix Supabase JSON typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/_authed.atendimento.$id.tsx')
+          text = path.read_text(encoding='utf-8')
+          old = 'extracted_data: buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta),'
+          new = 'extracted_data: buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta) as never,'
+          count = text.count(old)
+          if count != 3:
+              raise SystemExit(f'Esperava 3 ocorrências, encontrei {count}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format and typecheck
+        run: |
+          bunx prettier --write 'src/routes/_authed.atendimento.$id.tsx'
+          bun run typecheck
+
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'src/routes/_authed.atendimento.$id.tsx'
+          git commit -m "fix: tipa persistência da revisão como JSON"
+          git push origin HEAD:fix/triagem-source-of-truth

@@ -26,7 +26,15 @@ import { getErrorMessage } from "@/lib/error-message";
 import { TriagemSepultamento } from "@/components/triagem-sepultamento";
 import { validateTriagemSepultamento } from "@/lib/triagem-sepultamento";
 
-const TRIAGEM_SEPULTAMENTO_KEYS = new Set(["data_agendada", "hora_sepultamento", "sala_velorio"]);
+const TRIAGEM_SEPULTAMENTO_KEYS = new Set([
+  "data_agendada",
+  "hora_sepultamento",
+  "sala_velorio",
+  "inicio_velorio",
+  "fim_velorio",
+  "local_sepultamento",
+  "funeraria",
+]);
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
   component: NewAttendance,
@@ -53,7 +61,6 @@ function NewAttendance() {
       (field) => !field.showWhen || extras[field.showWhen.field] === field.showWhen.equals,
     ) ?? []
   ).map<ProcessExtraField>((field) => {
-    // PPS restringe o horário aos 3 slots fixos (08:30, 09:00, 09:30).
     if (isPps && field.name === "hora_agendamento") {
       return {
         ...field,
@@ -96,16 +103,10 @@ function NewAttendance() {
 
   function hasScheduleWithoutDate(): boolean {
     if (!proc || !["sepultamento", "exumacao"].includes(proc.key)) return false;
+    if (proc.key === "sepultamento" && extras.tem_velorio !== "SIM") return false;
     const scheduleKeys =
       proc.key === "sepultamento"
-        ? [
-            "inicio_velorio",
-            "fim_velorio",
-            "sala_velorio",
-            "hora_sepultamento",
-            "local_sepultamento",
-            "funeraria",
-          ]
+        ? ["inicio_velorio", "fim_velorio", "sala_velorio", "local_sepultamento", "funeraria"]
         : ["hora_agendamento", "localizacao", "referencia_pps", "referencia_pss"];
     return scheduleKeys.some((key) => extras[key]?.trim()) && !extras.data_agendada?.trim();
   }
@@ -116,22 +117,24 @@ function NewAttendance() {
     const agendaType = resolveAgendaType(proc.key, extras.tipo_agenda_exumacao);
     if (!agendaType) return;
 
+    const isBurialWithWake = proc.key === "sepultamento";
     const { error } = await db.from("agenda_events").insert({
       user_id: userId,
       attendance_id: attendanceId,
       agenda_type: agendaType,
       event_date: eventDate,
-      start_time:
-        proc.key === "sepultamento"
-          ? extras.inicio_velorio || extras.hora_sepultamento || null
-          : extras.hora_agendamento || null,
-      end_time: proc.key === "sepultamento" ? extras.fim_velorio || null : null,
-      service: proc.label,
-      location: proc.key === "exumacao" ? extras.localizacao || null : null,
-      room: proc.key === "sepultamento" ? extras.sala_velorio || null : null,
-      burial_time: proc.key === "sepultamento" ? extras.hora_sepultamento || null : null,
-      burial_location: proc.key === "sepultamento" ? extras.local_sepultamento || null : null,
-      funeral_home: proc.key === "sepultamento" ? extras.funeraria || null : null,
+      start_time: isBurialWithWake
+        ? extras.inicio_velorio || extras.hora_sepultamento || null
+        : extras.hora_agendamento || null,
+      end_time: isBurialWithWake ? extras.fim_velorio || null : null,
+      service: isBurialWithWake ? "Velório + Sepultamento" : proc.label,
+      location: isBurialWithWake
+        ? extras.local_sepultamento || null
+        : extras.localizacao || null,
+      room: isBurialWithWake ? extras.sala_velorio || null : null,
+      burial_time: isBurialWithWake ? extras.hora_sepultamento || null : null,
+      burial_location: isBurialWithWake ? extras.local_sepultamento || null : null,
+      funeral_home: isBurialWithWake ? extras.funeraria || null : null,
       pss_reference:
         agendaType === "exumacao_pss"
           ? extras.referencia_pps || extras.referencia_pss || null
@@ -246,7 +249,7 @@ function NewAttendance() {
           <CardHeader>
             <CardTitle>{proc.label}</CardTitle>
             <CardDescription>
-              Defina os detalhes do atendimento e, quando necessário, a agenda.
+              Defina os detalhes do atendimento. Os campos de velório só aparecem quando necessários.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -283,7 +286,7 @@ function NewAttendance() {
             <ExtraFields
               fields={
                 isSepultamento
-                  ? visibleExtraFields.filter((f) => !TRIAGEM_SEPULTAMENTO_KEYS.has(f.name))
+                  ? visibleExtraFields.filter((field) => !TRIAGEM_SEPULTAMENTO_KEYS.has(field.name))
                   : visibleExtraFields
               }
               values={extras}
@@ -330,6 +333,7 @@ function NewAttendance() {
                       subprocess,
                       data_agendada: extras.data_agendada,
                       hora_sepultamento: extras.hora_sepultamento,
+                      tem_velorio: (extras.tem_velorio as "SIM" | "NAO" | "") || "",
                       sala_velorio: extras.sala_velorio,
                       sem_velorio: (extras.sem_velorio as "SIM" | "") || "",
                     });
@@ -351,22 +355,22 @@ function NewAttendance() {
           <CardHeader>
             <CardTitle>Envie prints e fotos</CardTitle>
             <CardDescription>
-              A IA extrai os dados e completa o atendimento e a agenda vinculada.
+              A IA extrai os dados do atendimento e atualiza a agenda quando houver vínculo.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {extras.data_agendada && ["sepultamento", "exumacao"].includes(processKey) && (
+            {proc && shouldCreateAgendaEvent(proc.key, extras) && (
               <div className="rounded-md border bg-muted/30 p-3 text-sm flex items-start gap-2">
                 <CalendarDays className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <div>
-                  <div className="font-medium">Este atendimento será incluído na agenda</div>
+                  <div className="font-medium">Este atendimento será incluído na Agenda Geral</div>
                   <div className="text-muted-foreground">
                     {extras.data_agendada}
                     {processKey === "exumacao" && extras.tipo_agenda_exumacao === "exumacao_pss"
                       ? " · Exumação PSS"
                       : processKey === "exumacao"
                         ? " · Agenda de Exumação"
-                        : " · Velório e Sepultamento"}
+                        : " · Velório + Sepultamento"}
                   </div>
                 </div>
               </div>

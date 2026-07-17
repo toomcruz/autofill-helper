@@ -176,7 +176,7 @@ function AttendanceDetail() {
       computeReviewSummary({
         keys: allFields,
         fields,
-        meta: fieldMeta,
+        meta: effectiveMeta,
         criticalKeys,
       }),
     [allFields, fields, fieldMeta, criticalKeys],

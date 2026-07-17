@@ -312,7 +312,7 @@ function AttendanceDetail() {
       .from("attendances")
       .update({
         extracted_data: buildPersistedExtractedData(
-          att.extracted_data,
+          att?.extracted_data,
           fields,
           effectiveMeta,
         ) as never,
@@ -341,7 +341,7 @@ function AttendanceDetail() {
       .from("attendances")
       .update({
         extracted_data: buildPersistedExtractedData(
-          att.extracted_data,
+          att?.extracted_data,
           fields,
           effectiveMeta,
         ) as never,
@@ -368,7 +368,7 @@ function AttendanceDetail() {
       .from("attendances")
       .update({
         extracted_data: buildPersistedExtractedData(
-          att.extracted_data,
+          att?.extracted_data,
           fields,
           effectiveMeta,
         ) as never,

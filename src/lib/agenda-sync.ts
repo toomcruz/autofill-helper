@@ -26,14 +26,29 @@ export function resolveAgendaType(
   return null;
 }
 
-/** Determines whether an attendance should produce an agenda event. */
+/** Returns true only when the burial flow explicitly includes a wake. */
+export function hasWake(extras: Record<string, string | undefined>): boolean {
+  return extras.tem_velorio === "SIM";
+}
+
+/**
+ * Determines whether a new attendance should automatically produce an agenda
+ * event.
+ *
+ * Exhumation keeps its current automatic linkage flow. Burial only creates a
+ * linked event when the user explicitly chooses "Sim, haverá velório". A plain
+ * burial therefore remains outside the wake agenda and does not generate an
+ * empty or misleading row.
+ */
 export function shouldCreateAgendaEvent(
   processKey: ProcessKey,
   extras: Record<string, string | undefined>,
 ): boolean {
-  if (processKey !== "sepultamento" && processKey !== "exumacao") return false;
   const eventDate = extras.data_agendada?.trim();
-  return Boolean(eventDate);
+  if (!eventDate) return false;
+  if (processKey === "exumacao") return true;
+  if (processKey === "sepultamento") return hasWake(extras);
+  return false;
 }
 
 /**
@@ -41,9 +56,10 @@ export function shouldCreateAgendaEvent(
  * agenda event. Non-empty existing values are preserved so extraction cannot
  * overwrite manual entries.
  */
-export function buildAgendaSyncPatch<
-  E extends Record<string, unknown>,
->(event: E, candidates: Record<string, string | null>): Record<string, string> {
+export function buildAgendaSyncPatch<E extends Record<string, unknown>>(
+  event: E,
+  candidates: Record<string, string | null>,
+): Record<string, string> {
   const patch: Record<string, string> = {};
   for (const [field, candidate] of Object.entries(candidates)) {
     const current = String(event[field] ?? "").trim();
@@ -79,7 +95,9 @@ export function validatePpsSchedule(input: PpsScheduleInput): string[] {
   const errors: string[] = [];
   const dateRaw = input.data_agendada?.trim();
   if (dateRaw) {
-    const [y, m, d] = dateRaw.split("-").map((part) => Number.parseInt(part, 10));
+    const [y, m, d] = dateRaw
+      .split("-")
+      .map((part) => Number.parseInt(part, 10));
     if (
       Number.isFinite(y) &&
       Number.isFinite(m) &&

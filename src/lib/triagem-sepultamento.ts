@@ -20,7 +20,7 @@ export const HORARIOS_SEPULTAMENTO = [
   "17:00",
 ] as const;
 
-/** Salas de velório (seleção única) — A..F ou "SEM VELÓRIO". */
+/** Salas de velório (seleção única). */
 export const SALAS_VELORIO = ["A", "B", "C", "D", "E", "F"] as const;
 
 /**
@@ -60,8 +60,11 @@ export interface TriagemSepultamentoState {
   /** ISO YYYY-MM-DD. */
   data_agendada?: string;
   hora_sepultamento?: string;
-  /** Letra A..F, string vazia quando "sem_velorio". */
+  /** Escolha explícita feita no fluxo progressivo. */
+  tem_velorio?: "SIM" | "NAO" | "";
+  /** Letra A..F. */
   sala_velorio?: string;
+  /** Compatibilidade com documentos e atendimentos anteriores. */
   sem_velorio?: "SIM" | "";
   /** Só efetivado depois de "Confirmar". */
   placa_identificacao?: string;
@@ -71,7 +74,10 @@ export interface TriagemSepultamentoState {
 /**
  * Valida se a triagem pode ser confirmada. Retorna a lista de mensagens de
  * erro na ordem em que devem ser exibidas (a UI mostra apenas a primeira).
- * A placa NÃO é obrigatória.
+ *
+ * Os detalhes do velório são opcionais. A única exigência é a escolha explícita
+ * entre "haverá velório" e "somente sepultamento", evitando que a interface
+ * presuma uma opção e despeje campos desnecessários na tela.
  */
 export function validateTriagemSepultamento(state: TriagemSepultamentoState): string[] {
   const errors: string[] = [];
@@ -84,10 +90,10 @@ export function validateTriagemSepultamento(state: TriagemSepultamentoState): st
   if (!state.hora_sepultamento?.trim()) {
     errors.push("Selecione o horário do sepultamento.");
   }
-  const hasSala = !!state.sala_velorio?.trim();
-  const semVelorio = state.sem_velorio === "SIM";
-  if (!hasSala && !semVelorio) {
-    errors.push("Selecione a sala do velório ou marque \"Sem velório\".");
+  const wakeChoice =
+    state.tem_velorio || (state.sem_velorio === "SIM" ? "NAO" : state.sala_velorio ? "SIM" : "");
+  if (wakeChoice !== "SIM" && wakeChoice !== "NAO") {
+    errors.push("Informe se haverá velório.");
   }
   return errors;
 }
@@ -95,13 +101,14 @@ export function validateTriagemSepultamento(state: TriagemSepultamentoState): st
 /**
  * Constrói o subconjunto de campos que devem sobrescrever `extracted_data`
  * na geração do DOCX. A placa só entra se confirmada. Sala fica vazia quando
- * "Sem velório" (o modelo pode omitir/renderizar em branco via `nullGetter`).
+ * o atendimento foi definido como somente sepultamento.
  */
 export function buildTriagemOverrides(state: TriagemSepultamentoState): Record<string, string> {
   const out: Record<string, string> = {};
   if (state.data_agendada) out.data_sepultamento = formatIsoToBr(state.data_agendada);
   if (state.hora_sepultamento) out.hora_sepultamento = state.hora_sepultamento;
-  if (state.sem_velorio === "SIM") {
+  const semVelorio = state.tem_velorio === "NAO" || state.sem_velorio === "SIM";
+  if (semVelorio) {
     out.sala_velorio = "";
   } else if (state.sala_velorio) {
     out.sala_velorio = state.sala_velorio;

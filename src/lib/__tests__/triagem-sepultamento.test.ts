@@ -25,7 +25,7 @@ describe("triagem-sepultamento", () => {
   });
 
   it("computeQuickDate soma dias a partir da data base", () => {
-    const base = new Date(2026, 6, 16); // 16/07/2026
+    const base = new Date(2026, 6, 16);
     expect(computeQuickDate("hoje", base)).toBe("2026-07-16");
     expect(computeQuickDate("amanha", base)).toBe("2026-07-17");
     expect(computeQuickDate("mais2", base)).toBe("2026-07-18");
@@ -49,11 +49,32 @@ describe("triagem-sepultamento", () => {
     expect(SALAS_VELORIO).toEqual(["A", "B", "C", "D", "E", "F"]);
   });
 
-  it("validação falha sem local/data/hora/sala", () => {
+  it("validação falha sem local, data, hora e escolha de velório", () => {
     expect(validateTriagemSepultamento({})).toHaveLength(4);
   });
 
-  it("validação aceita 'sem velório' sem sala", () => {
+  it("validação aceita somente sepultamento sem campos de velório", () => {
+    const errs = validateTriagemSepultamento({
+      subprocess: "quadra_geral",
+      data_agendada: "2026-07-16",
+      hora_sepultamento: "10:00",
+      tem_velorio: "NAO",
+      sem_velorio: "SIM",
+    });
+    expect(errs).toEqual([]);
+  });
+
+  it("validação aceita velório mesmo com detalhes ainda vazios", () => {
+    const errs = validateTriagemSepultamento({
+      subprocess: "jazigo",
+      data_agendada: "2026-07-16",
+      hora_sepultamento: "14:00",
+      tem_velorio: "SIM",
+    });
+    expect(errs).toEqual([]);
+  });
+
+  it("mantém compatibilidade com atendimento antigo sem velório", () => {
     const errs = validateTriagemSepultamento({
       subprocess: "quadra_geral",
       data_agendada: "2026-07-16",
@@ -63,21 +84,12 @@ describe("triagem-sepultamento", () => {
     expect(errs).toEqual([]);
   });
 
-  it("validação passa com sala selecionada", () => {
-    const errs = validateTriagemSepultamento({
-      subprocess: "jazigo",
-      data_agendada: "2026-07-16",
-      hora_sepultamento: "14:00",
-      sala_velorio: "A",
-    });
-    expect(errs).toEqual([]);
-  });
-
   it("buildTriagemOverrides não inclui placa quando não confirmada", () => {
     const out = buildTriagemOverrides({
       subprocess: "quadra_geral",
       data_agendada: "2026-07-16",
       hora_sepultamento: "10:00",
+      tem_velorio: "SIM",
       sala_velorio: "A",
       placa_identificacao: "12345",
       placa_confirmada: "",
@@ -95,6 +107,7 @@ describe("triagem-sepultamento", () => {
       subprocess: "jazigo",
       data_agendada: "2026-07-16",
       hora_sepultamento: "14:00",
+      tem_velorio: "SIM",
       sala_velorio: "B",
       placa_identificacao: "98765",
       placa_confirmada: "SIM",
@@ -104,12 +117,13 @@ describe("triagem-sepultamento", () => {
     expect(out.quadra_geral_gaveta).toBe("NAO");
   });
 
-  it("buildTriagemOverrides zera sala quando sem_velorio", () => {
+  it("buildTriagemOverrides zera sala quando for somente sepultamento", () => {
     const out = buildTriagemOverrides({
       subprocess: "quadra_geral",
       data_agendada: "2026-07-16",
       hora_sepultamento: "10:00",
-      sem_velorio: "SIM",
+      tem_velorio: "NAO",
+      sala_velorio: "C",
     });
     expect(out.sala_velorio).toBe("");
   });

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeFieldStatus,
-  computeReviewSummary,
-} from "../review-status";
+import { computeFieldStatus, computeReviewSummary } from "../review-status";
 import type { FlatFieldMeta } from "../flatten-vision";
 import { getCriticalFieldKeys } from "@/lib/domain/critical-fields";
 
@@ -47,15 +44,13 @@ describe("computeFieldStatus", () => {
   });
 
   it("retorna nao_encontrado quando campo crítico está vazio", () => {
-    expect(
-      computeFieldStatus({ value: "", meta: undefined, isCritical: true }),
-    ).toBe("nao_encontrado");
+    expect(computeFieldStatus({ value: "", meta: undefined, isCritical: true })).toBe(
+      "nao_encontrado",
+    );
   });
 
   it("não marca nao_encontrado para campo não crítico vazio", () => {
-    expect(
-      computeFieldStatus({ value: "", meta: undefined, isCritical: false }),
-    ).toBe("normal");
+    expect(computeFieldStatus({ value: "", meta: undefined, isCritical: false })).toBe("normal");
   });
 
   it("campo confirmado pelo usuário ignora limiar de confiança", () => {

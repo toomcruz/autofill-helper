@@ -9,7 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, ChevronDown, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  FileDown,
+  FileText,
+  Loader2,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { getProcess } from "@/lib/processes";
 import { getErrorMessage } from "@/lib/error-message";
 import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
@@ -368,7 +378,8 @@ function AttendanceDetail() {
                     : `${reviewSummary.pendingCount} informações precisam de revisão`}
                   {reviewSummary.blockingKeys.length > 0 && (
                     <span className="text-destructive font-medium ml-1">
-                      ({reviewSummary.blockingKeys.length} crítica{reviewSummary.blockingKeys.length > 1 ? "s" : ""})
+                      ({reviewSummary.blockingKeys.length} crítica
+                      {reviewSummary.blockingKeys.length > 1 ? "s" : ""})
                     </span>
                   )}
                 </div>
@@ -526,7 +537,6 @@ function AttendanceDetail() {
     </div>
   );
 }
-
 
 interface FieldRowProps {
   fieldKey: string;

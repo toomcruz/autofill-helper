@@ -21,7 +21,9 @@ export function navigationErrorMessage(error: unknown): string {
 
 export function isDynamicImportLoadError(error: unknown): boolean {
   const message = navigationErrorMessage(error).toLocaleLowerCase("en-US");
-  return DYNAMIC_IMPORT_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+  return DYNAMIC_IMPORT_ERROR_PATTERNS.some((pattern) =>
+    message.includes(pattern),
+  );
 }
 
 export function canReloadNavigation(
@@ -49,26 +51,24 @@ function markNavigationReload(): boolean {
 }
 
 export function reloadForDynamicImportError(error: unknown): boolean {
-  if (typeof window === "undefined" || !isDynamicImportLoadError(error)) return false;
+  if (typeof window === "undefined" || !isDynamicImportLoadError(error))
+    return false;
   if (!markNavigationReload()) return false;
   window.location.reload();
   return true;
 }
 
-type VitePreloadErrorEvent = Event & { payload?: unknown };
-
 export function registerVitePreloadRecovery(): () => void {
   if (typeof window === "undefined") return () => undefined;
 
   const handlePreloadError = (event: Event) => {
-    const preloadEvent = event as VitePreloadErrorEvent;
     if (!markNavigationReload()) return;
 
     event.preventDefault();
-    console.warn("[navigation] Recarregando após falha de módulo", preloadEvent.payload);
     window.location.reload();
   };
 
   window.addEventListener("vite:preloadError", handlePreloadError);
-  return () => window.removeEventListener("vite:preloadError", handlePreloadError);
+  return () =>
+    window.removeEventListener("vite:preloadError", handlePreloadError);
 }

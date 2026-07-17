@@ -49,8 +49,19 @@ describe("computeFieldStatus", () => {
     );
   });
 
-  it("não marca nao_encontrado para campo não crítico vazio", () => {
-    expect(computeFieldStatus({ value: "", meta: undefined, isCritical: false })).toBe("normal");
+  it("trata textos de placeholder como ausência real", () => {
+    expect(
+      computeFieldStatus({ value: "Não informado", meta: undefined, isCritical: true }),
+    ).toBe("nao_encontrado");
+    expect(
+      computeFieldStatus({ value: "Informação pendente", meta: undefined, isCritical: false }),
+    ).toBe("opcional_vazio");
+  });
+
+  it("marca campo não crítico vazio como opcional_vazio", () => {
+    expect(computeFieldStatus({ value: "", meta: undefined, isCritical: false })).toBe(
+      "opcional_vazio",
+    );
   });
 
   it("campo confirmado pelo usuário ignora limiar de confiança", () => {
@@ -72,7 +83,7 @@ describe("computeReviewSummary", () => {
       keys: ["nome_falecido", "cpf_falecido", "observacao"],
       fields: { nome_falecido: "Maria", cpf_falecido: "111.111.111-11", observacao: "x" },
       meta: {
-        nome_falecido: meta({ confidence: 0.6 }), // revisar, mas não bloqueia
+        nome_falecido: meta({ confidence: 0.6 }),
         cpf_falecido: meta({ confidence: 0.95 }),
         observacao: meta({ confidence: 0.4 }),
       },
@@ -110,7 +121,7 @@ describe("computeReviewSummary", () => {
     expect(summary.statuses.cpf_falecido).toBe("nao_encontrado");
   });
 
-  it("campo não crítico ausente não bloqueia", () => {
+  it("campo não crítico ausente não bloqueia nem vira confirmado", () => {
     const summary = computeReviewSummary({
       keys: ["nome_falecido", "observacao"],
       fields: { nome_falecido: "Maria", observacao: "" },
@@ -118,7 +129,47 @@ describe("computeReviewSummary", () => {
       criticalKeys: critical,
     });
     expect(summary.canGenerate).toBe(true);
-    expect(summary.statuses.observacao).toBe("normal");
+    expect(summary.statuses.observacao).toBe("opcional_vazio");
+  });
+
+  it("resolve aliases como um único conceito quando um deles possui valor", () => {
+    const summary = computeReviewSummary({
+      keys: ["cpfResp", "cpf_responsavel"],
+      fields: { cpfResp: "123.456.789-00", cpf_responsavel: "" },
+      meta: { cpfResp: meta({ key: "cpfResp", value: "123.456.789-00" }) },
+      criticalKeys: new Set(["cpf_responsavel"]),
+    });
+
+    expect(summary.canGenerate).toBe(true);
+    expect(summary.pendingCount).toBe(0);
+    expect(summary.blockingKeys).toEqual([]);
+    expect(summary.statuses.cpfResp).toBe("normal");
+    expect(summary.statuses.cpf_responsavel).toBe("normal");
+  });
+
+  it("conta uma única pendência para aliases vazios do mesmo campo", () => {
+    const summary = computeReviewSummary({
+      keys: ["dataSep", "data_sepultamento"],
+      fields: { dataSep: "", data_sepultamento: "" },
+      meta: {},
+      criticalKeys: new Set(["dataSep", "data_sepultamento"]),
+    });
+
+    expect(summary.pendingCount).toBe(1);
+    expect(summary.blockingKeys).toHaveLength(1);
+  });
+
+  it("gera divergência quando aliases possuem valores realmente diferentes", () => {
+    const summary = computeReviewSummary({
+      keys: ["dataSep", "data_sepultamento"],
+      fields: { dataSep: "17/07/2026", data_sepultamento: "18/07/2026" },
+      meta: {},
+      criticalKeys: new Set(["dataSep"]),
+    });
+
+    expect(summary.pendingCount).toBe(1);
+    expect(summary.statuses.dataSep).toBe("conflito");
+    expect(summary.statuses.data_sepultamento).toBe("conflito");
   });
 });
 

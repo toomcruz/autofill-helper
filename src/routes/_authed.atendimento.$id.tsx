@@ -121,6 +121,28 @@ function AttendanceDetail() {
     return flattenVisionState(state).meta;
   }, [att?.extracted_data]);
 
+  // Conflitos originais do pipeline de visão para exibir opções ao usuário.
+  const visionConflicts = useMemo<FieldConflict[]>(() => {
+    const raw = att?.extracted_data as Record<string, unknown> | undefined;
+    const state = raw?._vision as VisionState | undefined;
+    return state?.conflicts ?? [];
+  }, [att?.extracted_data]);
+
+  // Confirmações locais de "usar valor atual" (baixa confiança → normal).
+  const [confirmedOverrides, setConfirmedOverrides] = useState<Set<string>>(new Set());
+
+  const effectiveMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
+    if (confirmedOverrides.size === 0) return fieldMeta;
+    const out: Record<string, FlatFieldMeta> = { ...fieldMeta };
+    for (const key of confirmedOverrides) {
+      const base = out[key];
+      out[key] = base
+        ? { ...base, confirmedByUser: true, confidence: 1 }
+        : { key, value: fields[key] ?? "", confidence: 1, confirmedByUser: true };
+    }
+    return out;
+  }, [fieldMeta, confirmedOverrides, fields]);
+
   const applicableTemplates = useMemo(() => {
     if (!att) return [];
     return (templates ?? []).filter((template) =>

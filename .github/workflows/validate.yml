@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -27,24 +29,30 @@ jobs:
 
       - name: Check formatting
         run: |
-          bunx prettier --check \
-            .github/workflows/validate.yml \
-            src/lib/docx.server.ts \
-            src/lib/__tests__/docx.test.ts \
-            src/lib/__tests__/navigation-recovery.test.ts \
-            src/lib/agenda.ts \
-            src/lib/attendances.functions.ts \
-            src/lib/error-message.ts \
-            src/lib/navigation-recovery.ts \
-            src/lib/official-templates.ts \
-            src/lib/processes.ts \
-            src/router.tsx \
-            src/routes/__root.tsx \
-            'src/routes/_authed.agenda.tsx' \
-            'src/routes/_authed.atendimento.$id.tsx' \
-            src/routes/_authed.atendimento.novo.tsx \
-            src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base_sha" ]; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+
+          mapfile -d '' changed_files < <(
+            git diff --name-only --diff-filter=ACMRT -z "$base_sha"...HEAD
+          )
+
+          files=()
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              *.ts|*.tsx|*.js|*.jsx|*.json|*.yml|*.yaml|*.css|*.scss|*.md|*.html)
+                files+=("$file")
+                ;;
+            esac
+          done
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed files supported by Prettier."
+            exit 0
+          fi
+
+          bunx prettier --check "${files[@]}"
 
   typecheck:
     runs-on: ubuntu-latest
@@ -110,6 +118,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -121,20 +131,27 @@ jobs:
 
       - name: Lint changed files
         run: |
-          bunx eslint \
-            src/lib/docx.server.ts \
-            src/lib/__tests__/docx.test.ts \
-            src/lib/__tests__/navigation-recovery.test.ts \
-            src/lib/agenda.ts \
-            src/lib/attendances.functions.ts \
-            src/lib/error-message.ts \
-            src/lib/navigation-recovery.ts \
-            src/lib/official-templates.ts \
-            src/lib/processes.ts \
-            src/router.tsx \
-            src/routes/__root.tsx \
-            'src/routes/_authed.agenda.tsx' \
-            'src/routes/_authed.atendimento.$id.tsx' \
-            src/routes/_authed.atendimento.novo.tsx \
-            src/routes/_authed.modelos.tsx \
-            src/routes/_authed.tsx
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base_sha" ]; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+
+          mapfile -d '' changed_files < <(
+            git diff --name-only --diff-filter=ACMRT -z "$base_sha"...HEAD
+          )
+
+          files=()
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              *.ts|*.tsx|*.js|*.jsx)
+                files+=("$file")
+                ;;
+            esac
+          done
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed JavaScript or TypeScript files to lint."
+            exit 0
+          fi
+
+          bunx eslint "${files[@]}"

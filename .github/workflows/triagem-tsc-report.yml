@@ -1,0 +1,43 @@
+name: Triagem TypeScript report
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    if: github.head_ref == 'fix/triagem-source-of-truth'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript report
+        shell: bash
+        run: |
+          set -o pipefail
+          bunx tsc --noEmit 2>&1 | tee /tmp/triagem-tsc.log
+
+      - name: Save report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triagem-tsc-report
+          path: /tmp/triagem-tsc.log
+          if-no-files-found: error
+          retention-days: 1

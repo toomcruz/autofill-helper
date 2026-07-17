@@ -543,3 +543,86 @@ function ImageThumb({ path }: { path: string }) {
     </div>
   );
 }
+
+interface FieldRowProps {
+  fieldKey: string;
+  value: string;
+  status: FieldStatus;
+  meta: FlatFieldMeta | undefined;
+  inputClass: string | undefined;
+  onChange: (value: string) => void;
+}
+
+function FieldRow({ fieldKey, value, status, meta, inputClass, onChange }: FieldRowProps) {
+  const [showDetails, setShowDetails] = useState(false);
+  const hasPending = status !== "normal";
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label htmlFor={fieldKey} className="text-xs">
+          {fieldKey}
+        </Label>
+        {status === "conflito" && (
+          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+            <AlertTriangle className="h-2.5 w-2.5" /> conflito
+          </Badge>
+        )}
+        {status === "nao_encontrado" && (
+          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+            <AlertTriangle className="h-2.5 w-2.5" /> não encontrado
+          </Badge>
+        )}
+        {status === "revisar" && (
+          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">
+            revisar
+          </Badge>
+        )}
+      </div>
+      <Input
+        id={fieldKey}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={inputClass}
+      />
+      {hasPending && meta && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="text-[10px] text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"
+          >
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${showDetails ? "rotate-180" : ""}`}
+            />
+            Ver detalhes
+          </button>
+          {showDetails && (
+            <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5 pl-4">
+              <div>Confiança: {(meta.confidence * 100).toFixed(0)}%</div>
+              {meta.source && <div>Origem: {String(meta.source).replace(/_/g, " ")}</div>}
+              {meta.sourceImageId && <div>Imagem: {meta.sourceImageId}</div>}
+              {meta.confirmedByUser && <div>Confirmado pelo usuário</div>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImageThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    supabase.storage
+      .from("attendance-images")
+      .createSignedUrl(path, 600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setUrl(data.signedUrl);
+      });
+  }, [path]);
+  return (
+    <div className="aspect-square rounded-md overflow-hidden border bg-muted">
+      {url && <img src={url} alt="" className="w-full h-full object-cover" />}
+    </div>
+  );
+}

@@ -35,21 +35,50 @@ export interface OfficialTemplateInstallVariant {
 
 const CATALOG_URL = "/templates/official/catalogo-modelos.json";
 
-export async function loadOfficialTemplateCatalog(): Promise<OfficialTemplateCatalogItem[]> {
+export async function loadOfficialTemplateCatalog(): Promise<
+  OfficialTemplateCatalogItem[]
+> {
   const response = await fetch(CATALOG_URL, { cache: "no-cache" });
-  if (!response.ok) throw new Error("Não foi possível carregar o catálogo de modelos oficiais.");
+  if (!response.ok)
+    throw new Error(
+      "Não foi possível carregar o catálogo de modelos oficiais.",
+    );
   const data = (await response.json()) as OfficialTemplateCatalogItem[];
   return data.filter((item) => item.ativo && item.formato === "docx");
 }
 
-function processFor(item: OfficialTemplateCatalogItem): OfficialProcessKey | null {
-  if (item.id === "identificacao-sala-velorio" || item.id === "condolencias") return "sepultamento";
+function processFor(
+  item: OfficialTemplateCatalogItem,
+): OfficialProcessKey | null {
+  if (item.id === "identificacao-sala-velorio" || item.id === "condolencias") {
+    return "sepultamento";
+  }
   if (item.id === "ordem-sepultamento") return "sepultamento";
-  if (item.id === "ordem-exumacao" || item.id === "guia-exumacao-semi-intacto") return "exumacao";
+  if (
+    item.id === "ordem-exumacao" ||
+    item.id === "guia-exumacao-semi-intacto"
+  ) {
+    return "exumacao";
+  }
   if (item.id === "aquisicao-renovacao-ossuario") return "ossario";
   if (item.id === "memorando-autorizacao-translado") return "translado";
   if (item.id === "atualizacao-cadastral") return "atualizacao_cadastral";
   return null;
+}
+
+function variant(
+  item: OfficialTemplateCatalogItem,
+  input: Omit<
+    OfficialTemplateInstallVariant,
+    "catalogId" | "placeholders" | "aliases"
+  >,
+): OfficialTemplateInstallVariant {
+  return {
+    catalogId: item.id,
+    placeholders: item.placeholders,
+    aliases: item.placeholderAliases,
+    ...input,
+  };
 }
 
 export function getOfficialInstallVariants(
@@ -57,42 +86,90 @@ export function getOfficialInstallVariants(
 ): OfficialTemplateInstallVariant[] {
   if (item.id === "termo-compromisso-responsabilidade") {
     return [
-      {
-        catalogId: item.id,
+      variant(item, {
         storageId: `${item.id}-sepultamento`,
         name: "OFICIAL · Termo de Compromisso e Responsabilidade · Sepultamento",
         process: "sepultamento",
         file: item.arquivo,
-        placeholders: item.placeholders,
-        aliases: item.placeholderAliases,
         contexts: ["jazigo"],
-      },
-      {
-        catalogId: item.id,
+      }),
+      variant(item, {
         storageId: `${item.id}-exumacao`,
         name: "OFICIAL · Termo de Compromisso e Responsabilidade · Exumação",
         process: "exumacao",
         file: item.arquivo,
-        placeholders: item.placeholders,
-        aliases: item.placeholderAliases,
         contexts: ["jazigo"],
-      },
+      }),
+    ];
+  }
+
+  if (item.id === "ordem-sepultamento") {
+    return [
+      variant(item, {
+        storageId: item.id,
+        name: "OFICIAL · Ordem de Sepultamento · Quadra geral",
+        process: "sepultamento",
+        file: item.arquivo,
+        contexts: ["quadra_geral"],
+      }),
+      variant(item, {
+        storageId: `${item.id}-jazigo`,
+        name: "OFICIAL · Ordem de Sepultamento · Jazigo",
+        process: "sepultamento",
+        file: "sepultamento/ordem-sepultamento-jazigo.docx",
+        contexts: ["jazigo"],
+      }),
+    ];
+  }
+
+  if (item.id === "ordem-exumacao") {
+    return [
+      variant(item, {
+        storageId: item.id,
+        name: "OFICIAL · Ordem de Exumação · Quadra geral",
+        process: "exumacao",
+        file: item.arquivo,
+        contexts: ["quadra_geral"],
+      }),
+      variant(item, {
+        storageId: `${item.id}-jazigo`,
+        name: "OFICIAL · Ordem de Exumação · Jazigo",
+        process: "exumacao",
+        file: "exumacao/ordem-exumacao-jazigo.docx",
+        contexts: ["jazigo"],
+      }),
+    ];
+  }
+
+  if (item.id === "aquisicao-renovacao-ossuario") {
+    return [
+      variant(item, {
+        storageId: item.id,
+        name: "OFICIAL · Ossuário · 1º aluguel / aquisição",
+        process: "ossario",
+        file: item.arquivo,
+        contexts: ["aluguel", "aquisicao"],
+      }),
+      variant(item, {
+        storageId: `${item.id}-renovacao`,
+        name: "OFICIAL · Ossuário · Renovação",
+        process: "ossario",
+        file: "ossuario/renovacao-ossuario.docx",
+        contexts: ["renovacao"],
+      }),
     ];
   }
 
   const process = processFor(item);
   if (!process) return [];
   return [
-    {
-      catalogId: item.id,
+    variant(item, {
       storageId: item.id,
       name: `OFICIAL · ${item.nome}`,
       process,
       file: item.arquivo,
-      placeholders: item.placeholders,
-      aliases: item.placeholderAliases,
       contexts: item.contextos,
-    },
+    }),
   ];
 }
 
@@ -100,7 +177,9 @@ export function officialStoragePath(userId: string, storageId: string): string {
   return `${userId}/official/${storageId}.docx`;
 }
 
-export function getOfficialStorageId(storagePath?: string | null): string | null {
+export function getOfficialStorageId(
+  storagePath?: string | null,
+): string | null {
   if (!storagePath) return null;
   const match = storagePath.match(/\/official\/([^/]+)\.docx$/i);
   return match?.[1] ?? null;
@@ -140,15 +219,48 @@ export function isTemplateApplicable(
   if (!id) return true;
 
   if (id === "termo-compromisso-responsabilidade-sepultamento") {
-    return attendance.process === "sepultamento" && attendance.subprocess === "jazigo";
+    return (
+      attendance.process === "sepultamento" &&
+      attendance.subprocess === "jazigo"
+    );
   }
   if (id === "termo-compromisso-responsabilidade-exumacao") {
-    return attendance.process === "exumacao" && attendance.subprocess === "jazigo";
+    return (
+      attendance.process === "exumacao" && attendance.subprocess === "jazigo"
+    );
+  }
+  if (id === "ordem-sepultamento") {
+    return (
+      attendance.process === "sepultamento" &&
+      attendance.subprocess === "quadra_geral"
+    );
+  }
+  if (id === "ordem-sepultamento-jazigo") {
+    return (
+      attendance.process === "sepultamento" &&
+      attendance.subprocess === "jazigo"
+    );
+  }
+  if (id === "ordem-exumacao") {
+    return (
+      attendance.process === "exumacao" &&
+      attendance.subprocess === "quadra_geral"
+    );
+  }
+  if (id === "ordem-exumacao-jazigo") {
+    return (
+      attendance.process === "exumacao" && attendance.subprocess === "jazigo"
+    );
   }
   if (id === "aquisicao-renovacao-ossuario") {
     return (
       attendance.process === "ossario" &&
-      ["aquisicao", "renovacao"].includes(attendance.subprocess ?? "")
+      ["aluguel", "aquisicao"].includes(attendance.subprocess ?? "")
+    );
+  }
+  if (id === "aquisicao-renovacao-ossuario-renovacao") {
+    return (
+      attendance.process === "ossario" && attendance.subprocess === "renovacao"
     );
   }
   if (id === "guia-exumacao-semi-intacto") {
@@ -159,7 +271,9 @@ export function isTemplateApplicable(
       attendance.extractedData?.situacao_exumacao,
       attendance.extractedData?.situacao,
     ].map(normalizedText);
-    return values.some((value) => value.includes("semi") && value.includes("intacto"));
+    return values.some(
+      (value) => value.includes("semi") && value.includes("intacto"),
+    );
   }
   if (id === "identificacao-sala-velorio" || id === "condolencias") {
     const values = [
@@ -169,7 +283,8 @@ export function isTemplateApplicable(
       attendance.extractedData?.salaVelorio,
     ];
     return (
-      attendance.process === "sepultamento" && values.some((value) => String(value ?? "").trim())
+      attendance.process === "sepultamento" &&
+      values.some((value) => String(value ?? "").trim())
     );
   }
 
@@ -191,7 +306,6 @@ const ALIASES: Record<string, Record<string, string>> = {
   },
   "ordem-sepultamento": {
     nomeRequerente: "nomeResp",
-    rgRequerente: "rgResp",
     cpfRequerente: "cpfResp",
     enderecoRequerente: "endResp",
     telefoneRequerente: "telResp",
@@ -213,7 +327,6 @@ const ALIASES: Record<string, Record<string, string>> = {
   },
   "ordem-exumacao": {
     nomeRequerente: "nomeResp",
-    rgRequerente: "rgResp",
     cpfRequerente: "cpfResp",
     enderecoRequerente: "endResp",
     telefoneRequerente: "telResp",
@@ -253,6 +366,9 @@ const ALIASES: Record<string, Record<string, string>> = {
     dataAquisicaoRenovacao: "dataAquisicao",
     dataVencimento: "dataVencimento",
     inscricaoGS: "inscrGS",
+    placaIdentificacao: "placa",
+    livro: "livro",
+    folha: "folha",
     dataAtualExtenso: "dataExt",
   },
   "guia-exumacao-semi-intacto": {
@@ -307,9 +423,18 @@ const SYNONYMS: Record<string, string[]> = {
   nomeFalecido: ["nome_falecido", "nomeFal", "falecido"],
   nomeRequerente: ["nome_requerente", "nome_responsavel", "nomeResp"],
   cpfRequerente: ["cpf_requerente", "cpf_responsavel", "cpfResp"],
-  rgRequerente: ["rg_requerente", "rg_responsavel", "rgResp"],
-  enderecoRequerente: ["endereco_requerente", "endereco_responsavel", "endResp", "endereco"],
-  telefoneRequerente: ["telefone_requerente", "telefone_responsavel", "telResp", "telefone"],
+  enderecoRequerente: [
+    "endereco_requerente",
+    "endereco_responsavel",
+    "endResp",
+    "endereco",
+  ],
+  telefoneRequerente: [
+    "telefone_requerente",
+    "telefone_responsavel",
+    "telResp",
+    "telefone",
+  ],
   inscricaoGS: ["inscricao_gs", "inscrGS", "numero_inscricao"],
   numeroDO: ["numero_do", "numDO"],
   dataSepultamento: ["data_sepultamento", "dataSep"],
@@ -319,6 +444,16 @@ const SYNONYMS: Record<string, string[]> = {
   salaVelorio: ["sala_velorio", "sala"],
   nomeConcessionario: ["nome_concessionario", "nomeConc"],
   cpfConcessionario: ["cpf_concessionario", "cpfConc"],
+  enderecoConcessionario: ["endereco_concessionario", "endConc", "endereco"],
+  telefoneConcessionario: ["telefone_concessionario", "telConc", "telefone"],
+  blocoGaleria: ["bloco_galeria", "bloco"],
+  numeroOssuario: ["numero_ossuario"],
+  dataAquisicaoRenovacao: [
+    "data_aquisicao_ossuario",
+    "data_renovacao_ossuario",
+  ],
+  dataVencimento: ["data_vencimento_ossuario"],
+  placaIdentificacao: ["placa_identificacao", "placa"],
   origemTranslado: ["origem_translado", "origem"],
   destinoTranslado: ["destino_translado", "destino"],
 };
@@ -330,6 +465,11 @@ function camelToSnake(value: string): string {
 function baseOfficialId(storageId: string): string {
   if (storageId.startsWith("termo-compromisso-responsabilidade-")) {
     return "termo-compromisso-responsabilidade";
+  }
+  if (storageId === "ordem-sepultamento-jazigo") return "ordem-sepultamento";
+  if (storageId === "ordem-exumacao-jazigo") return "ordem-exumacao";
+  if (storageId === "aquisicao-renovacao-ossuario-renovacao") {
+    return "aquisicao-renovacao-ossuario";
   }
   return storageId;
 }

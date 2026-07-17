@@ -227,7 +227,18 @@ function AttendanceDetail() {
     qc.invalidateQueries({ queryKey: ["attendance", id] });
   }
 
+  function assertCanGenerate() {
+    if (reviewSummary.blockingKeys.length > 0) {
+      toast.error(
+        `Corrija os campos críticos antes de gerar: ${reviewSummary.blockingKeys.join(", ")}`,
+      );
+      return false;
+    }
+    return true;
+  }
+
   async function handleGenerate(templateId: string) {
+    if (!assertCanGenerate()) return;
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
     setGeneratingId(templateId);
     try {
@@ -245,6 +256,7 @@ function AttendanceDetail() {
     if (!applicableTemplates.length) {
       return toast.error("Nenhum modelo aplicável a este atendimento.");
     }
+    if (!assertCanGenerate()) return;
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
     for (const template of applicableTemplates) {
       setGeneratingId(template.id);

@@ -48,9 +48,10 @@ export function shouldCreateAgendaEvent(
  * agenda event. Non-empty existing values are preserved so extraction cannot
  * overwrite manual entries.
  */
-export function buildAgendaSyncPatch<
-  E extends Record<string, unknown>,
->(event: E, candidates: Record<string, string | null>): Record<string, string> {
+export function buildAgendaSyncPatch<E extends Record<string, unknown>>(
+  event: E,
+  candidates: Record<string, string | null>,
+): Record<string, string> {
   const patch: Record<string, string> = {};
   for (const [field, candidate] of Object.entries(candidates)) {
     const current = String(event[field] ?? "").trim();
@@ -86,7 +87,9 @@ export function validatePpsSchedule(input: PpsScheduleInput): string[] {
   const errors: string[] = [];
   const dateRaw = input.data_agendada?.trim();
   if (dateRaw) {
-    const [y, m, d] = dateRaw.split("-").map((part) => Number.parseInt(part, 10));
+    const [y, m, d] = dateRaw
+      .split("-")
+      .map((part) => Number.parseInt(part, 10));
     if (
       Number.isFinite(y) &&
       Number.isFinite(m) &&

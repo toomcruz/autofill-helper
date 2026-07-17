@@ -26,11 +26,7 @@ import { getErrorMessage } from "@/lib/error-message";
 import { TriagemSepultamento } from "@/components/triagem-sepultamento";
 import { validateTriagemSepultamento } from "@/lib/triagem-sepultamento";
 
-const TRIAGEM_SEPULTAMENTO_KEYS = new Set([
-  "data_agendada",
-  "hora_sepultamento",
-  "sala_velorio",
-]);
+const TRIAGEM_SEPULTAMENTO_KEYS = new Set(["data_agendada", "hora_sepultamento", "sala_velorio"]);
 
 export const Route = createFileRoute("/_authed/atendimento/novo")({
   component: NewAttendance,
@@ -293,7 +289,6 @@ function NewAttendance() {
               values={extras}
               onChange={updateExtra}
             />
-
 
             {previewedDocuments.length > 0 && (
               <div className="rounded-md border bg-muted/25 p-3 space-y-2">

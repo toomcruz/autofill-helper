@@ -26,21 +26,29 @@ export function resolveAgendaType(
   return null;
 }
 
+/** Returns true only when the burial flow explicitly includes a wake. */
+export function hasWake(extras: Record<string, string | undefined>): boolean {
+  return extras.tem_velorio === "SIM";
+}
+
 /**
  * Determines whether a new attendance should automatically produce an agenda
  * event.
  *
- * Velório e sepultamento are intentionally managed in the standalone Agenda
- * module because an event may exist before any documentation or attendance.
- * Exhumation keeps its current automatic linkage flow.
+ * Exhumation keeps its current automatic linkage flow. Burial only creates a
+ * linked event when the user explicitly chooses "Sim, haverá velório". A plain
+ * burial therefore remains outside the wake agenda and does not generate an
+ * empty or misleading row.
  */
 export function shouldCreateAgendaEvent(
   processKey: ProcessKey,
   extras: Record<string, string | undefined>,
 ): boolean {
-  if (processKey !== "exumacao") return false;
   const eventDate = extras.data_agendada?.trim();
-  return Boolean(eventDate);
+  if (!eventDate) return false;
+  if (processKey === "exumacao") return true;
+  if (processKey === "sepultamento") return hasWake(extras);
+  return false;
 }
 
 /**

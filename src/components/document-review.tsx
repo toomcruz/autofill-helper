@@ -382,7 +382,7 @@ function GroupRow({
       </div>
 
       {/* Conflito com candidatos */}
-      {status === "conflito" && conflict && !manual ? (
+      {status === "conflito" && conflict && Array.isArray(conflict.candidates) && conflict.candidates.length > 0 && !manual ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             Encontramos valores diferentes para este campo. Escolha qual usar:
@@ -390,17 +390,17 @@ function GroupRow({
           <div className="flex flex-wrap gap-2">
             {conflict.candidates.map((cand, idx) => (
               <Button
-                key={`${cand.value}-${idx}`}
+                key={`${cand?.value ?? idx}-${idx}`}
                 type="button"
                 variant="outline"
                 size="sm"
                 className="justify-start gap-2"
-                onClick={() => onChange(cand.value)}
+                onClick={() => onChange(String(cand?.value ?? ""))}
               >
                 <span className="text-xs text-muted-foreground shrink-0">
                   {idx === 0 ? "Documento principal" : `Documento ${idx + 1}`}:
                 </span>
-                <span className="font-medium">{cand.value}</span>
+                <span className="font-medium">{String(cand?.value ?? "")}</span>
               </Button>
             ))}
             <Button type="button" variant="ghost" size="sm" onClick={() => setManual(true)}>

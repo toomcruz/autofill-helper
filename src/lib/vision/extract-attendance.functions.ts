@@ -36,9 +36,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
     if (imageError) throw new Error(imageError.message);
     if (!images?.length) throw new Error("Nenhuma imagem enviada");
 
-    const { extractAttendanceVisionCore } = await import(
-      "./extract-attendance.core"
-    );
+    const { extractAttendanceVisionCore } = await import("./extract-attendance.core");
 
     // Prepara imagens em dataURL.
     const prepared: Array<{
@@ -75,9 +73,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
     const previousState =
       rawExtracted && typeof rawExtracted === "object" && "_vision" in rawExtracted
         ? ((rawExtracted as { _vision?: unknown })._vision as
-            | Awaited<
-                ReturnType<typeof extractAttendanceVisionCore>
-              >["state"]
+            | Awaited<ReturnType<typeof extractAttendanceVisionCore>>["state"]
             | undefined)
         : undefined;
 
@@ -92,8 +88,7 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
 
     // Falha total: nenhum campo/pessoa extraído em nenhuma imagem → deixa
     // que o chamador acione o fallback legado.
-    const hadAnyOutput =
-      state.persons.length > 0 || Object.keys(state.rawByImage).length > 0;
+    const hadAnyOutput = state.persons.length > 0 || Object.keys(state.rawByImage).length > 0;
     if (!hadAnyOutput) {
       throw new Error(
         errors[0]?.error
@@ -104,20 +99,50 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
 
     const { flattenVisionState } = await import("./flatten-vision");
     const { flat, meta } = flattenVisionState(state);
+    let finalFlat = flat;
+    let finalMeta = meta;
+
+    if (attendance.process === "sepultamento") {
+      const { buildTriagemOverrides } = await import("@/lib/triagem-sepultamento");
+      const details = (attendance.subprocess_details as Record<string, string>) ?? {};
+      const triagem = buildTriagemOverrides({
+        subprocess: attendance.subprocess ?? undefined,
+        data_agendada: details.data_agendada,
+        hora_sepultamento: details.hora_sepultamento,
+        tem_velorio: (details.tem_velorio as "SIM" | "NAO" | "") || "",
+        sala_velorio: details.sala_velorio,
+        inicio_velorio: details.inicio_velorio,
+        fim_velorio: details.fim_velorio,
+        local_sepultamento: details.local_sepultamento,
+        funeraria: details.funeraria,
+        sem_velorio: (details.sem_velorio as "SIM" | "") || "",
+        placa_identificacao: details.placa_identificacao,
+        placa_confirmada: (details.placa_confirmada as "SIM" | "") || "",
+      });
+      finalFlat = { ...flat, ...triagem };
+      finalMeta = { ...meta };
+      for (const [key, value] of Object.entries(triagem)) {
+        finalMeta[key] = {
+          key,
+          value,
+          confidence: 1,
+          source: "triagem",
+          confirmedByUser: true,
+        };
+      }
+    }
 
     // Preserva chaves já confirmadas manualmente em extracted_data (que não
     // passam pelo _vision) e escreve novos campos planos por cima.
     const previousFlat = Object.fromEntries(
-      Object.entries(rawExtracted).filter(
-        ([k, v]) => k !== "_vision" && typeof v === "string",
-      ),
+      Object.entries(rawExtracted).filter(([k, v]) => k !== "_vision" && typeof v === "string"),
     ) as Record<string, string>;
 
     const nextExtracted: Record<string, unknown> = {
       ...previousFlat,
-      ...flat,
+      ...finalFlat,
       _vision: state,
-      _visionMeta: meta,
+      _visionMeta: finalMeta,
     };
 
     const { error: saveError } = await supabase
@@ -131,11 +156,11 @@ export const extractAttendanceVision = createServerFn({ method: "POST" })
       const { syncLinkedAgenda } = await import("@/lib/attendances.functions");
       await syncLinkedAgenda(supabase, data.attendanceId, {
         ...previousFlat,
-        ...flat,
+        ...finalFlat,
       });
     } catch {
       // não bloqueia extração
     }
 
-    return { data: flat, meta, state, errors };
+    return { data: finalFlat, meta: finalMeta, state, errors };
   });

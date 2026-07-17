@@ -20,6 +20,10 @@ import { getCriticalFieldKeys } from "@/lib/domain/critical-fields";
 import { isTemplateApplicable } from "@/lib/official-templates";
 import { DocumentReview } from "@/components/document-review";
 import type { FieldConflict } from "@/lib/domain/vision/types";
+import {
+  buildTriagemOverrides,
+  TRIAGEM_SEPULTAMENTO_REVIEW_KEYS,
+} from "@/lib/triagem-sepultamento";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
   component: AttendanceDetail,
@@ -118,6 +122,25 @@ function AttendanceDetail() {
   const [extracting, setExtracting] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
+  const triagemFields = useMemo<Record<string, string>>(() => {
+    if (att?.process !== "sepultamento") return {};
+    const details = (att.subprocess_details as Record<string, string>) ?? {};
+    return buildTriagemOverrides({
+      subprocess: att.subprocess ?? undefined,
+      data_agendada: details.data_agendada,
+      hora_sepultamento: details.hora_sepultamento,
+      tem_velorio: (details.tem_velorio as "SIM" | "NAO" | "") || "",
+      sala_velorio: details.sala_velorio,
+      inicio_velorio: details.inicio_velorio,
+      fim_velorio: details.fim_velorio,
+      local_sepultamento: details.local_sepultamento,
+      funeraria: details.funeraria,
+      sem_velorio: (details.sem_velorio as "SIM" | "") || "",
+      placa_identificacao: details.placa_identificacao,
+      placa_confirmada: (details.placa_confirmada as "SIM" | "") || "",
+    });
+  }, [att?.process, att?.subprocess, att?.subprocess_details]);
+
   useEffect(() => {
     if (att?.extracted_data) {
       const raw = att.extracted_data as Record<string, unknown>;
@@ -126,9 +149,9 @@ function AttendanceDetail() {
         if (k.startsWith("_")) continue;
         if (typeof v === "string") flat[k] = v;
       }
-      setFields(flat);
+      setFields({ ...flat, ...triagemFields });
     }
-  }, [att?.extracted_data]);
+  }, [att?.extracted_data, triagemFields]);
 
   // Metadados de confiança/conflito derivados do estado de visão salvo.
   const fieldMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
@@ -196,6 +219,14 @@ function AttendanceDetail() {
     return Array.from(fieldsSet).sort();
   }, [fields, applicableTemplates]);
 
+  const reviewFields = useMemo(
+    () =>
+      att?.process === "sepultamento"
+        ? allFields.filter((key) => !TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has(key))
+        : allFields,
+    [allFields, att?.process],
+  );
+
   const criticalKeys = useMemo(
     () => getCriticalFieldKeys(applicableTemplates),
     [applicableTemplates],
@@ -204,12 +235,12 @@ function AttendanceDetail() {
   const reviewSummary = useMemo(
     () =>
       computeReviewSummary({
-        keys: allFields,
+        keys: reviewFields,
         fields,
         meta: effectiveMeta,
         criticalKeys,
       }),
-    [allFields, fields, effectiveMeta, criticalKeys],
+    [reviewFields, fields, effectiveMeta, criticalKeys],
   );
 
   async function triggerExtract(autoGenerate = false) {
@@ -230,14 +261,15 @@ function AttendanceDetail() {
       }
       await qc.invalidateQueries({ queryKey: ["attendance", id] });
       toast.success(usedFallback ? "Dados extraídos (modo legado)" : "Dados extraídos");
-      setFields(extracted);
+      const consolidated = { ...extracted, ...triagemFields };
+      setFields(consolidated);
       if (autoGenerate && att) {
         const applicable = (templates ?? []).filter((template) =>
           isTemplateApplicable(template, {
             process: att.process,
             subprocess: att.subprocess,
             subprocessDetails: (att.subprocess_details as Record<string, unknown>) ?? {},
-            extractedData: extracted,
+            extractedData: consolidated,
           }),
         );
         if (applicable.length) {
@@ -278,7 +310,14 @@ function AttendanceDetail() {
     setSaving(true);
     const { error } = await supabase
       .from("attendances")
-      .update({ extracted_data: fields, status: "reviewing" })
+      .update({
+        extracted_data: buildPersistedExtractedData(
+          att?.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
+        status: "reviewing",
+      })
       .eq("id", id);
     setSaving(false);
     if (error) toast.error(error.message);
@@ -298,7 +337,16 @@ function AttendanceDetail() {
 
   async function handleGenerate(templateId: string) {
     if (!assertCanGenerate()) return;
-    await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
+    await supabase
+      .from("attendances")
+      .update({
+        extracted_data: buildPersistedExtractedData(
+          att?.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
+      })
+      .eq("id", id);
     setGeneratingId(templateId);
     try {
       await generateFn({ data: { attendanceId: id, templateId } });
@@ -316,7 +364,16 @@ function AttendanceDetail() {
       return toast.error("Nenhum modelo aplicável a este atendimento.");
     }
     if (!assertCanGenerate()) return;
-    await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
+    await supabase
+      .from("attendances")
+      .update({
+        extracted_data: buildPersistedExtractedData(
+          att?.extracted_data,
+          fields,
+          effectiveMeta,
+        ) as never,
+      })
+      .eq("id", id);
     for (const template of applicableTemplates) {
       setGeneratingId(template.id);
       try {
@@ -424,6 +481,15 @@ function AttendanceDetail() {
               </div>
             </CardHeader>
             <CardContent>
+              {att.process === "sepultamento" && Object.keys(triagemFields).length > 0 && (
+                <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+                  <p className="text-sm font-medium">Dados da triagem já aplicados</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Modalidade, data, horário, sala, placa e demais dados operacionais não precisam
+                    ser preenchidos novamente nesta tela.
+                  </p>
+                </div>
+              )}
               {extracting && !Object.keys(fields).length && (
                 <div className="text-sm text-muted-foreground flex items-center gap-2 py-4">
                   <Loader2 className="h-4 w-4 animate-spin" /> Analisando imagens com IA…
@@ -440,7 +506,7 @@ function AttendanceDetail() {
                 </p>
               ) : (
                 <DocumentReview
-                  keys={allFields}
+                  keys={reviewFields}
                   fields={fields}
                   meta={effectiveMeta}
                   statuses={reviewSummary.statuses}

@@ -5,18 +5,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  AlertTriangle,
   ArrowLeft,
-  ChevronDown,
   FileDown,
   FileText,
   Loader2,
-  Plus,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -27,9 +22,11 @@ import { extractAttendanceVision } from "@/lib/vision/extract-attendance.functio
 import { flattenVisionState } from "@/lib/vision/flatten-vision";
 import type { VisionState } from "@/lib/vision/attendance-vision-store";
 import type { FlatFieldMeta } from "@/lib/vision/flatten-vision";
-import { computeReviewSummary, type FieldStatus } from "@/lib/vision/review-status";
+import { computeReviewSummary } from "@/lib/vision/review-status";
 import { getCriticalFieldKeys } from "@/lib/domain/critical-fields";
 import { isTemplateApplicable } from "@/lib/official-templates";
+import { DocumentReview } from "@/components/document-review";
+import type { FieldConflict } from "@/lib/domain/vision/types";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
   component: AttendanceDetail,

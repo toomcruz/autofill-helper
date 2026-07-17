@@ -1,3 +1,4 @@
+// Regressões dos modelos oficiais reconstruídos para impressão.
 import { describe, expect, it } from "vitest";
 import {
   applyOfficialTemplateAliases,

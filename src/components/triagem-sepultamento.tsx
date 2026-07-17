@@ -130,7 +130,10 @@ export function TriagemSepultamento({
   }
 
   function updatePlacaText(value: string) {
-    onExtrasChange({ placa_identificacao: value, placa_confirmada: "" });
+    onExtrasChange({
+      placa_identificacao: value,
+      placa_confirmada: value.trim() ? "SIM" : "",
+    });
     setPlacaEncontrada(null);
   }
 
@@ -353,8 +356,8 @@ export function TriagemSepultamento({
           <div>
             <h3 className="font-semibold">Dados para a Agenda Geral</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ao concluir o atendimento, o velório e o sepultamento serão vinculados
-              automaticamente à agenda. Preencha apenas as informações disponíveis.
+              Ao concluir o atendimento, o velório e o sepultamento serão vinculados automaticamente
+              à agenda. Preencha apenas as informações disponíveis.
             </p>
           </div>
 

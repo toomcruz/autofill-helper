@@ -180,15 +180,38 @@ export const extractAttendanceData = createServerFn({ method: "POST" })
       throw new Error("A IA não devolveu dados válidos. Tente novamente.");
     }
 
+    let finalExtracted = extracted;
+    if (attendance.process === "sepultamento") {
+      const { buildTriagemOverrides } = await import("./triagem-sepultamento");
+      const details = (attendance.subprocess_details as Record<string, string>) ?? {};
+      finalExtracted = {
+        ...extracted,
+        ...buildTriagemOverrides({
+          subprocess: attendance.subprocess ?? undefined,
+          data_agendada: details.data_agendada,
+          hora_sepultamento: details.hora_sepultamento,
+          tem_velorio: (details.tem_velorio as "SIM" | "NAO" | "") || "",
+          sala_velorio: details.sala_velorio,
+          inicio_velorio: details.inicio_velorio,
+          fim_velorio: details.fim_velorio,
+          local_sepultamento: details.local_sepultamento,
+          funeraria: details.funeraria,
+          sem_velorio: (details.sem_velorio as "SIM" | "") || "",
+          placa_identificacao: details.placa_identificacao,
+          placa_confirmada: (details.placa_confirmada as "SIM" | "") || "",
+        }),
+      };
+    }
+
     const { error: saveError } = await supabase
       .from("attendances")
-      .update({ extracted_data: extracted, status: "reviewing" })
+      .update({ extracted_data: finalExtracted, status: "reviewing" })
       .eq("id", data.attendanceId);
     if (saveError) throw new Error(saveError.message);
 
-    const agendaSynced = await syncLinkedAgenda(supabase, data.attendanceId, extracted);
+    const agendaSynced = await syncLinkedAgenda(supabase, data.attendanceId, finalExtracted);
 
-    return { data: extracted, agendaSynced };
+    return { data: finalExtracted, agendaSynced };
   });
 
 // -------- Generate a filled document --------
@@ -236,7 +259,12 @@ export const generateDocument = createServerFn({ method: "POST" })
         subprocess: attendance.subprocess ?? undefined,
         data_agendada: details.data_agendada,
         hora_sepultamento: details.hora_sepultamento,
+        tem_velorio: (details.tem_velorio as "SIM" | "NAO" | "") || "",
         sala_velorio: details.sala_velorio,
+        inicio_velorio: details.inicio_velorio,
+        fim_velorio: details.fim_velorio,
+        local_sepultamento: details.local_sepultamento,
+        funeraria: details.funeraria,
         sem_velorio: (details.sem_velorio as "SIM" | "") || "",
         placa_identificacao: details.placa_identificacao,
         placa_confirmada: (details.placa_confirmada as "SIM" | "") || "",

@@ -7,6 +7,7 @@ import {
   validateTriagemSepultamento,
   HORARIOS_SEPULTAMENTO,
   SALAS_VELORIO,
+  TRIAGEM_SEPULTAMENTO_REVIEW_KEYS,
 } from "@/lib/triagem-sepultamento";
 
 describe("triagem-sepultamento", () => {
@@ -84,7 +85,7 @@ describe("triagem-sepultamento", () => {
     expect(errs).toEqual([]);
   });
 
-  it("buildTriagemOverrides não inclui placa quando não confirmada", () => {
+  it("buildTriagemOverrides usa placa digitada na triagem como fonte de verdade", () => {
     const out = buildTriagemOverrides({
       subprocess: "quadra_geral",
       data_agendada: "2026-07-16",
@@ -94,7 +95,7 @@ describe("triagem-sepultamento", () => {
       placa_identificacao: "12345",
       placa_confirmada: "",
     });
-    expect(out.placa_identificacao).toBeUndefined();
+    expect(out.placa_identificacao).toBe("12345");
     expect(out.data_sepultamento).toBe("16/07/2026");
     expect(out.hora_sepultamento).toBe("10:00");
     expect(out.sala_velorio).toBe("A");
@@ -115,6 +116,43 @@ describe("triagem-sepultamento", () => {
     expect(out.placa_identificacao).toBe("98765");
     expect(out.concessao).toBe("SIM");
     expect(out.quadra_geral_gaveta).toBe("NAO");
+  });
+
+  it("buildTriagemOverrides inclui todos os dados operacionais da triagem", () => {
+    const out = buildTriagemOverrides({
+      subprocess: "jazigo",
+      data_agendada: "2026-07-16",
+      hora_sepultamento: "14:00",
+      tem_velorio: "SIM",
+      sala_velorio: "B",
+      inicio_velorio: "09:00",
+      fim_velorio: "13:30",
+      local_sepultamento: "Rua 03, terreno 10",
+      funeraria: "Consolare",
+      placa_identificacao: "98765",
+    });
+    expect(out).toMatchObject({
+      data_sepultamento: "16/07/2026",
+      hora_sepultamento: "14:00",
+      horario_sepultamento: "14:00",
+      sala_velorio: "B",
+      inicio_velorio: "09:00",
+      fim_velorio: "13:30",
+      local_sepultamento: "Rua 03, terreno 10",
+      funeraria: "Consolare",
+      empresa_funeraria: "Consolare",
+      placa_identificacao: "98765",
+      concessao: "SIM",
+      quadra_geral_gaveta: "NAO",
+    });
+  });
+
+  it("oculta da revisão os campos já definidos na triagem", () => {
+    expect(TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has("data_sepultamento")).toBe(true);
+    expect(TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has("horario_sepultamento")).toBe(true);
+    expect(TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has("sala_velorio")).toBe(true);
+    expect(TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has("placa_identificacao")).toBe(true);
+    expect(TRIAGEM_SEPULTAMENTO_REVIEW_KEYS.has("inscricao_gscemi")).toBe(false);
   });
 
   it("buildTriagemOverrides zera sala quando for somente sepultamento", () => {

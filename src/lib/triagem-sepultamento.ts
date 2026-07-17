@@ -27,9 +27,10 @@ export const SALAS_VELORIO = ["A", "B", "C", "D", "E", "F"] as const;
  * Aplica o efeito colateral da escolha do local do sepultamento nos campos
  * derivados de triagem (`concessao`, `quadra_geral_gaveta`).
  */
-export function applyLocalSepultamento(
-  local: LocalSepultamento,
-): { concessao: "SIM" | "NAO"; quadra_geral_gaveta: "SIM" | "NAO" } {
+export function applyLocalSepultamento(local: LocalSepultamento): {
+  concessao: "SIM" | "NAO";
+  quadra_geral_gaveta: "SIM" | "NAO";
+} {
   if (local === "quadra_geral") return { concessao: "NAO", quadra_geral_gaveta: "SIM" };
   return { concessao: "SIM", quadra_geral_gaveta: "NAO" };
 }
@@ -64,12 +65,47 @@ export interface TriagemSepultamentoState {
   tem_velorio?: "SIM" | "NAO" | "";
   /** Letra A..F. */
   sala_velorio?: string;
+  inicio_velorio?: string;
+  fim_velorio?: string;
+  local_sepultamento?: string;
+  funeraria?: string;
   /** Compatibilidade com documentos e atendimentos anteriores. */
   sem_velorio?: "SIM" | "";
-  /** Só efetivado depois de "Confirmar". */
+  /** Valor informado deliberadamente na triagem. */
   placa_identificacao?: string;
   placa_confirmada?: "SIM" | "";
 }
+
+/**
+ * Chaves que já foram definidas na triagem e não devem reaparecer como campos
+ * editáveis na revisão do documento. Inclui aliases canônicos e legados.
+ */
+export const TRIAGEM_SEPULTAMENTO_REVIEW_KEYS = new Set([
+  "data_sepultamento",
+  "dataSepultamento",
+  "dataSep",
+  "hora_sepultamento",
+  "horario_sepultamento",
+  "horaSepultamento",
+  "horaSep",
+  "sala_velorio",
+  "salaVelorio",
+  "sala",
+  "inicio_velorio",
+  "inicio",
+  "fim_velorio",
+  "fim",
+  "local_sepultamento",
+  "localSepultamento",
+  "funeraria",
+  "empresa_funeraria",
+  "empresaFuneraria",
+  "placa_identificacao",
+  "placaIdentificacao",
+  "placa",
+  "concessao",
+  "quadra_geral_gaveta",
+]);
 
 /**
  * Valida se a triagem pode ser confirmada. Retorna a lista de mensagens de
@@ -106,14 +142,28 @@ export function validateTriagemSepultamento(state: TriagemSepultamentoState): st
 export function buildTriagemOverrides(state: TriagemSepultamentoState): Record<string, string> {
   const out: Record<string, string> = {};
   if (state.data_agendada) out.data_sepultamento = formatIsoToBr(state.data_agendada);
-  if (state.hora_sepultamento) out.hora_sepultamento = state.hora_sepultamento;
+  if (state.hora_sepultamento) {
+    out.hora_sepultamento = state.hora_sepultamento;
+    out.horario_sepultamento = state.hora_sepultamento;
+  }
   const semVelorio = state.tem_velorio === "NAO" || state.sem_velorio === "SIM";
   if (semVelorio) {
     out.sala_velorio = "";
-  } else if (state.sala_velorio) {
-    out.sala_velorio = state.sala_velorio;
+    out.inicio_velorio = "";
+    out.fim_velorio = "";
+  } else {
+    if (state.sala_velorio) out.sala_velorio = state.sala_velorio;
+    if (state.inicio_velorio) out.inicio_velorio = state.inicio_velorio;
+    if (state.fim_velorio) out.fim_velorio = state.fim_velorio;
   }
-  if (state.placa_confirmada === "SIM" && state.placa_identificacao?.trim()) {
+  if (state.local_sepultamento?.trim()) {
+    out.local_sepultamento = state.local_sepultamento.trim();
+  }
+  if (state.funeraria?.trim()) {
+    out.funeraria = state.funeraria.trim();
+    out.empresa_funeraria = state.funeraria.trim();
+  }
+  if (state.placa_identificacao?.trim()) {
     out.placa_identificacao = state.placa_identificacao.trim();
   }
   if (state.subprocess === "quadra_geral" || state.subprocess === "jazigo") {

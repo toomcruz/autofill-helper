@@ -13,23 +13,40 @@ import { DOCUMENT_TYPES } from "@/lib/domain/vision/types";
 
 const nonEmpty = z.string().trim().min(1);
 
+const ROLE_ALIASES: Record<string, string> = {
+  falecido: "falecido_sepultamento",
+  de_cujus: "falecido_sepultamento",
+  vitima: "falecido_sepultamento",
+  exumado: "falecido_exumacao",
+  responsavel_legal: "responsavel",
+  requisitante: "requerente",
+};
+
 export const RoleCandidateSchema = z.object({
-  role: z.enum([
-    "falecido_sepultamento",
-    "falecido_exumacao",
-    "falecido_exumacao_pps",
-    "responsavel",
-    "requerente",
-    "concessionario",
-    "sucessor",
-    "signatario",
-    "autorizado",
-    "declarante",
-    "outro",
-  ]),
+  role: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return value;
+      const normalized = value.trim().toLowerCase();
+      return ROLE_ALIASES[normalized] ?? normalized;
+    },
+    z.enum([
+      "falecido_sepultamento",
+      "falecido_exumacao",
+      "falecido_exumacao_pps",
+      "responsavel",
+      "requerente",
+      "concessionario",
+      "sucessor",
+      "signatario",
+      "autorizado",
+      "declarante",
+      "outro",
+    ]),
+  ),
   confidence: z.number().min(0).max(1),
   evidence: z.string().default(""),
 });
+
 
 export const RawPersonSchema = z.object({
   temporaryId: nonEmpty,

@@ -25,15 +25,16 @@ jobs:
       - name: Guard optional attendance
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
+
           path = Path('src/routes/_authed.atendimento.$id.tsx')
           text = path.read_text(encoding='utf-8')
-          old = 'buildPersistedExtractedData(att.extracted_data, fields, effectiveMeta)'
-          new = 'buildPersistedExtractedData(att?.extracted_data, fields, effectiveMeta)'
-          count = text.count(old)
+          pattern = r'(buildPersistedExtractedData\(\s*)att\.extracted_data'
+          text, count = re.subn(pattern, r'\1att?.extracted_data', text)
           if count != 3:
-              raise SystemExit(f'Esperava 3 ocorrências, encontrei {count}')
-          path.write_text(text.replace(old, new), encoding='utf-8')
+              raise SystemExit(f'Esperava corrigir 3 chamadas, corrigi {count}')
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Setup Bun

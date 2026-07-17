@@ -35,52 +35,6 @@ export const PROCESSES: ProcessDef[] = [
       { value: "quadra_geral", label: "Quadra geral" },
       { value: "jazigo", label: "Jazigo" },
     ],
-    extraFields: [
-      {
-        name: "data_agendada",
-        label: "Data do velório/sepultamento",
-        type: "date",
-        section: "Agenda de velório e sepultamento",
-        description: "Ao informar a data, o atendimento será incluído automaticamente na agenda.",
-      },
-      {
-        name: "inicio_velorio",
-        label: "Início do velório",
-        type: "time",
-        section: "Agenda de velório e sepultamento",
-      },
-      {
-        name: "fim_velorio",
-        label: "Fim do velório",
-        type: "time",
-        section: "Agenda de velório e sepultamento",
-      },
-      {
-        name: "sala_velorio",
-        label: "Sala de velório",
-        type: "text",
-        section: "Agenda de velório e sepultamento",
-      },
-      {
-        name: "hora_sepultamento",
-        label: "Horário do sepultamento",
-        type: "time",
-        section: "Agenda de velório e sepultamento",
-      },
-      {
-        name: "local_sepultamento",
-        label: "Local do sepultamento",
-        type: "text",
-        section: "Agenda de velório e sepultamento",
-        placeholder: "Quadra, terreno, gaveta ou jazigo",
-      },
-      {
-        name: "funeraria",
-        label: "Funerária / agência",
-        type: "text",
-        section: "Agenda de velório e sepultamento",
-      },
-    ],
   },
   {
     key: "exumacao",

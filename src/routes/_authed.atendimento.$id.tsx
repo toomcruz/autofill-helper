@@ -9,7 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, CheckCircle2, FileDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  FileDown,
+  FileText,
+  Loader2,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { getProcess } from "@/lib/processes";
 import { getErrorMessage } from "@/lib/error-message";
 import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
@@ -17,6 +27,8 @@ import { extractAttendanceVision } from "@/lib/vision/extract-attendance.functio
 import { flattenVisionState } from "@/lib/vision/flatten-vision";
 import type { VisionState } from "@/lib/vision/attendance-vision-store";
 import type { FlatFieldMeta } from "@/lib/vision/flatten-vision";
+import { computeReviewSummary, type FieldStatus } from "@/lib/vision/review-status";
+import { getCriticalFieldKeys } from "@/lib/domain/critical-fields";
 import { isTemplateApplicable } from "@/lib/official-templates";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
@@ -135,6 +147,22 @@ function AttendanceDetail() {
     return Array.from(fieldsSet).sort();
   }, [fields, applicableTemplates]);
 
+  const criticalKeys = useMemo(
+    () => getCriticalFieldKeys(applicableTemplates),
+    [applicableTemplates],
+  );
+
+  const reviewSummary = useMemo(
+    () =>
+      computeReviewSummary({
+        keys: allFields,
+        fields,
+        meta: fieldMeta,
+        criticalKeys,
+      }),
+    [allFields, fields, fieldMeta, criticalKeys],
+  );
+
   async function triggerExtract(autoGenerate = false) {
     setExtracting(true);
     try {
@@ -209,7 +237,18 @@ function AttendanceDetail() {
     qc.invalidateQueries({ queryKey: ["attendance", id] });
   }
 
+  function assertCanGenerate() {
+    if (reviewSummary.blockingKeys.length > 0) {
+      toast.error(
+        `Corrija os campos críticos antes de gerar: ${reviewSummary.blockingKeys.join(", ")}`,
+      );
+      return false;
+    }
+    return true;
+  }
+
   async function handleGenerate(templateId: string) {
+    if (!assertCanGenerate()) return;
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
     setGeneratingId(templateId);
     try {
@@ -227,6 +266,7 @@ function AttendanceDetail() {
     if (!applicableTemplates.length) {
       return toast.error("Nenhum modelo aplicável a este atendimento.");
     }
+    if (!assertCanGenerate()) return;
     await supabase.from("attendances").update({ extracted_data: fields }).eq("id", id);
     for (const template of applicableTemplates) {
       setGeneratingId(template.id);
@@ -330,6 +370,20 @@ function AttendanceDetail() {
                   <Loader2 className="h-4 w-4 animate-spin" /> Analisando imagens com IA…
                 </div>
               )}
+              {reviewSummary.pendingCount > 0 && (
+                <div className="text-sm rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {reviewSummary.pendingCount === 1
+                    ? "1 informação precisa de revisão"
+                    : `${reviewSummary.pendingCount} informações precisam de revisão`}
+                  {reviewSummary.blockingKeys.length > 0 && (
+                    <span className="text-destructive font-medium ml-1">
+                      ({reviewSummary.blockingKeys.length} crítica
+                      {reviewSummary.blockingKeys.length > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </div>
+              )}
               {allFields.length === 0 && !extracting && (
                 <p className="text-sm text-muted-foreground">
                   Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com
@@ -343,53 +397,23 @@ function AttendanceDetail() {
               <div className="grid sm:grid-cols-2 gap-3">
                 {allFields.map((key) => {
                   const m = fieldMeta[key];
-                  const band = m?.hasConflict
-                    ? "conflito"
-                    : m?.confirmedByUser
-                      ? "confirmado"
-                      : m
-                        ? m.confidence >= 0.9
-                          ? "alta"
-                          : m.confidence >= 0.75
-                            ? "revisar"
-                            : "baixa"
-                        : null;
+                  const status: FieldStatus = reviewSummary.statuses[key] ?? "normal";
+                  const inputClass =
+                    status === "conflito" || status === "nao_encontrado"
+                      ? "border-destructive"
+                      : status === "revisar"
+                        ? "border-amber-500/60"
+                        : undefined;
                   return (
-                    <div key={key} className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Label htmlFor={key} className="text-xs">
-                          {key}
-                        </Label>
-                        {band === "conflito" && (
-                          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
-                            <AlertTriangle className="h-2.5 w-2.5" /> conflito
-                          </Badge>
-                        )}
-                        {band === "confirmado" && (
-                          <Badge variant="outline" className="h-4 text-[10px] gap-1 border-emerald-500 text-emerald-600">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> confirmado
-                          </Badge>
-                        )}
-                        {band === "alta" && (
-                          <Badge variant="outline" className="h-4 text-[10px] border-emerald-500 text-emerald-600">alta</Badge>
-                        )}
-                        {band === "revisar" && (
-                          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">revisar</Badge>
-                        )}
-                        {band === "baixa" && (
-                          <Badge variant="outline" className="h-4 text-[10px] border-destructive text-destructive">baixa</Badge>
-                        )}
-                        {m?.source && (
-                          <span className="text-[10px] text-muted-foreground">via {String(m.source).replace(/_/g, " ")}</span>
-                        )}
-                      </div>
-                      <Input
-                        id={key}
-                        value={fields[key] ?? ""}
-                        onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
-                        className={m?.hasConflict ? "border-destructive" : undefined}
-                      />
-                    </div>
+                    <FieldRow
+                      key={key}
+                      fieldKey={key}
+                      value={fields[key] ?? ""}
+                      status={status}
+                      meta={m}
+                      inputClass={inputClass}
+                      onChange={(value) => setFields({ ...fields, [key]: value })}
+                    />
                   );
                 })}
               </div>
@@ -510,6 +534,72 @@ function AttendanceDetail() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface FieldRowProps {
+  fieldKey: string;
+  value: string;
+  status: FieldStatus;
+  meta: FlatFieldMeta | undefined;
+  inputClass: string | undefined;
+  onChange: (value: string) => void;
+}
+
+function FieldRow({ fieldKey, value, status, meta, inputClass, onChange }: FieldRowProps) {
+  const [showDetails, setShowDetails] = useState(false);
+  const hasPending = status !== "normal";
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label htmlFor={fieldKey} className="text-xs">
+          {fieldKey}
+        </Label>
+        {status === "conflito" && (
+          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+            <AlertTriangle className="h-2.5 w-2.5" /> conflito
+          </Badge>
+        )}
+        {status === "nao_encontrado" && (
+          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
+            <AlertTriangle className="h-2.5 w-2.5" /> não encontrado
+          </Badge>
+        )}
+        {status === "revisar" && (
+          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">
+            revisar
+          </Badge>
+        )}
+      </div>
+      <Input
+        id={fieldKey}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={inputClass}
+      />
+      {hasPending && meta && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="text-[10px] text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"
+          >
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${showDetails ? "rotate-180" : ""}`}
+            />
+            Ver detalhes
+          </button>
+          {showDetails && (
+            <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5 pl-4">
+              <div>Confiança: {(meta.confidence * 100).toFixed(0)}%</div>
+              {meta.source && <div>Origem: {String(meta.source).replace(/_/g, " ")}</div>}
+              {meta.sourceImageId && <div>Imagem: {meta.sourceImageId}</div>}
+              {meta.confirmedByUser && <div>Confirmado pelo usuário</div>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

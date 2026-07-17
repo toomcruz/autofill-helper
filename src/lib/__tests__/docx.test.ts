@@ -62,6 +62,12 @@ function expectNoHiddenInk(zip: PizZip, templatePath: string): void {
   expect(zip.file("word/media/image1.emf")).toBeNull();
 }
 
+function pagesFromPackage(zip: PizZip): number | null {
+  const appXml = zip.file("docProps/app.xml")?.asText() ?? "";
+  const pages = appXml.match(/<Pages>(\d+)<\/Pages>/)?.[1];
+  return pages ? Number.parseInt(pages, 10) : null;
+}
+
 describe("docx official templates", () => {
   it("detects double-brace placeholders without inner brace duplicates", () => {
     const template = readTemplate("public/templates/official/velorio/condolencias.docx");
@@ -89,10 +95,14 @@ describe("docx official templates", () => {
     expect(output.byteLength).toBeLessThan(template.byteLength * 2);
   });
 
-  it("keeps sanitized Sepultamento and Exumacao templates free of hidden Word ink", () => {
+  it("keeps operational print templates free of hidden Word ink", () => {
     const templatePaths = [
       "public/templates/official/sepultamento/ordem-sepultamento.docx",
+      "public/templates/official/sepultamento/ordem-sepultamento-jazigo.docx",
       "public/templates/official/exumacao/ordem-exumacao.docx",
+      "public/templates/official/exumacao/ordem-exumacao-jazigo.docx",
+      "public/templates/official/ossuario/aquisicao-renovacao-ossuario.docx",
+      "public/templates/official/ossuario/renovacao-ossuario.docx",
     ];
 
     for (const templatePath of templatePaths) {
@@ -102,6 +112,22 @@ describe("docx official templates", () => {
       const placeholders = detectPlaceholders(template);
       const output = fillDocx(template, fakeValuesFor(placeholders));
       expectNoHiddenInk(new PizZip(output), `${templatePath} output`);
+    }
+  });
+
+  it("keeps rebuilt operational templates declared as one-page documents", () => {
+    const templatePaths = [
+      "public/templates/official/sepultamento/ordem-sepultamento.docx",
+      "public/templates/official/sepultamento/ordem-sepultamento-jazigo.docx",
+      "public/templates/official/exumacao/ordem-exumacao.docx",
+      "public/templates/official/exumacao/ordem-exumacao-jazigo.docx",
+      "public/templates/official/atualizacao-cadastral/atualizacao-cadastral.docx",
+      "public/templates/official/ossuario/aquisicao-renovacao-ossuario.docx",
+      "public/templates/official/ossuario/renovacao-ossuario.docx",
+    ];
+
+    for (const templatePath of templatePaths) {
+      expect(pagesFromPackage(new PizZip(readTemplate(templatePath))), templatePath).toBe(1);
     }
   });
 

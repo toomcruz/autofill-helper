@@ -29,20 +29,30 @@ describe("resolveAgendaType", () => {
 describe("shouldCreateAgendaEvent", () => {
   it("does not create when there is no scheduled date (test 4)", () => {
     expect(shouldCreateAgendaEvent("sepultamento", {})).toBe(false);
-    expect(shouldCreateAgendaEvent("sepultamento", { data_agendada: "   " })).toBe(false);
-    expect(shouldCreateAgendaEvent("exumacao", { hora_agendamento: "10:00" })).toBe(false);
+    expect(
+      shouldCreateAgendaEvent("sepultamento", { data_agendada: "   " }),
+    ).toBe(false);
+    expect(
+      shouldCreateAgendaEvent("exumacao", { hora_agendamento: "10:00" }),
+    ).toBe(false);
   });
 
   it("keeps burial and wake events in the standalone agenda", () => {
-    expect(shouldCreateAgendaEvent("sepultamento", { data_agendada: "2026-07-20" })).toBe(false);
+    expect(
+      shouldCreateAgendaEvent("sepultamento", { data_agendada: "2026-07-20" }),
+    ).toBe(false);
   });
 
   it("creates exhumation events when a date is provided", () => {
-    expect(shouldCreateAgendaEvent("exumacao", { data_agendada: "2026-07-20" })).toBe(true);
+    expect(
+      shouldCreateAgendaEvent("exumacao", { data_agendada: "2026-07-20" }),
+    ).toBe(true);
   });
 
   it("never creates for unrelated processes", () => {
-    expect(shouldCreateAgendaEvent("translado", { data_agendada: "2026-07-20" })).toBe(false);
+    expect(
+      shouldCreateAgendaEvent("translado", { data_agendada: "2026-07-20" }),
+    ).toBe(false);
   });
 });
 

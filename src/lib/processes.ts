@@ -53,7 +53,10 @@ export const PROCESSES: ProcessDef[] = [
         section: "Agenda de exumação",
         options: [
           { value: "exumacao", label: "Agenda de Exumação" },
-          { value: "exumacao_pss", label: "Exumação para Pronto Sepultamento (PPS)" },
+          {
+            value: "exumacao_pss",
+            label: "Exumação para Pronto Sepultamento (PPS)",
+          },
         ],
       },
       {

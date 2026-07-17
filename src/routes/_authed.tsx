@@ -1,10 +1,10 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuthSession } from "@/hooks/use-auth-session";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { CalendarDays, FileStack, FileText, LayoutDashboard, Loader2, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Separator } from "@/components/ui/separator";
 
 export const Route = createFileRoute("/_authed")({
   component: AuthedLayout,
@@ -13,7 +13,6 @@ export const Route = createFileRoute("/_authed")({
 function AuthedLayout() {
   const { session, loading } = useAuthSession();
   const navigate = useNavigate();
-  const { location } = useRouterState();
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth", replace: true });
@@ -27,56 +26,25 @@ function AuthedLayout() {
     );
   }
 
-  const nav = [
-    { to: "/dashboard", label: "Atendimentos", icon: LayoutDashboard },
-    { to: "/agenda", label: "Agenda", icon: CalendarDays },
-    { to: "/modelos", label: "Modelos", icon: FileStack },
-  ];
-
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-primary text-primary-foreground">
-              <FileText className="h-4 w-4" />
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <SidebarInset className="bg-background">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur-md md:px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mx-1 h-5" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-display text-sm font-semibold text-foreground">
+                Apoio ao Atendimento
+              </div>
             </div>
-            <span className="font-semibold">Apoio ao Atendimento</span>
-          </Link>
-          <nav className="flex items-center gap-1">
-            {nav.map((item) => {
-              const active = location.pathname.startsWith(item.to);
-              return (
-                <Link key={item.to} to={item.to}>
-                  <Button
-                    variant={active ? "secondary" : "ghost"}
-                    size="sm"
-                    className={cn("gap-2")}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </Button>
-                </Link>
-              );
-            })}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate({ to: "/auth", replace: true });
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sair</span>
-            </Button>
-          </nav>
-        </div>
-      </header>
-      <main className="max-w-6xl mx-auto p-4 md:p-6">
-        <Outlet />
-      </main>
-    </div>
+          </header>
+          <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-5 md:px-6 md:py-8">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

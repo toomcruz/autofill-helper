@@ -393,6 +393,7 @@ function GroupRow({
   const blank = isReviewBlankValue(value);
 
   if (status === "normal" && !blank && !editing) {
+
     return (
       <div id={anchorId} className="scroll-mt-24 rounded-lg border px-3 py-2">
         <div className="flex items-start justify-between gap-3">
@@ -481,9 +482,15 @@ function GroupRow({
           <Input
             value={value}
             placeholder={placeholder}
-            onChange={(event) => onChange(event.target.value)}
+            onFocus={() => setEditing(true)}
+            onChange={(event) => {
+              setEditing(true);
+              onChange(event.target.value);
+            }}
+            onBlur={() => setEditing(false)}
             className={inputBorder}
           />
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-h-[1rem] text-[11px] text-muted-foreground">
               {meta?.hasConflict === false && meta.source && status === "revisar" && (

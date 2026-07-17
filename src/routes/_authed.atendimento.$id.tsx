@@ -189,7 +189,7 @@ function AttendanceDetail() {
         meta: effectiveMeta,
         criticalKeys,
       }),
-    [allFields, fields, fieldMeta, criticalKeys],
+    [allFields, fields, effectiveMeta, criticalKeys],
   );
 
   async function triggerExtract(autoGenerate = false) {

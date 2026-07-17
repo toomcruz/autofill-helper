@@ -37,18 +37,13 @@ function officialPath(storageId: string): string {
 describe("official template print variants", () => {
   it("installs separate burial and exhumation variants for quadra geral and jazigo", () => {
     const burial = getOfficialInstallVariants(
-      catalogItem(
-        "ordem-sepultamento",
-        "sepultamento/ordem-sepultamento.docx",
-        ["quadra_geral", "jazigo"],
-      ),
+      catalogItem("ordem-sepultamento", "sepultamento/ordem-sepultamento.docx", [
+        "quadra_geral",
+        "jazigo",
+      ]),
     );
     const exhumation = getOfficialInstallVariants(
-      catalogItem(
-        "ordem-exumacao",
-        "exumacao/ordem-exumacao.docx",
-        ["quadra_geral", "jazigo"],
-      ),
+      catalogItem("ordem-exumacao", "exumacao/ordem-exumacao.docx", ["quadra_geral", "jazigo"]),
     );
 
     expect(burial.map((item) => item.storageId)).toEqual([
@@ -93,11 +88,11 @@ describe("official template print variants", () => {
 
   it("uses acquisition for first rental and a separate document for renewal", () => {
     const variants = getOfficialInstallVariants(
-      catalogItem(
-        "aquisicao-renovacao-ossuario",
-        "ossuario/aquisicao-renovacao-ossuario.docx",
-        ["aluguel", "aquisicao", "renovacao"],
-      ),
+      catalogItem("aquisicao-renovacao-ossuario", "ossuario/aquisicao-renovacao-ossuario.docx", [
+        "aluguel",
+        "aquisicao",
+        "renovacao",
+      ]),
     );
 
     expect(variants.map((item) => item.storageId)).toEqual([
@@ -117,9 +112,7 @@ describe("official template print variants", () => {
       isTemplateApplicable(
         {
           process: "ossario",
-          storage_path: officialPath(
-            "aquisicao-renovacao-ossuario-renovacao",
-          ),
+          storage_path: officialPath("aquisicao-renovacao-ossuario-renovacao"),
         },
         { process: "ossario", subprocess: "renovacao" },
       ),

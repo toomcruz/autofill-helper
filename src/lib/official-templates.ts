@@ -35,29 +35,19 @@ export interface OfficialTemplateInstallVariant {
 
 const CATALOG_URL = "/templates/official/catalogo-modelos.json";
 
-export async function loadOfficialTemplateCatalog(): Promise<
-  OfficialTemplateCatalogItem[]
-> {
+export async function loadOfficialTemplateCatalog(): Promise<OfficialTemplateCatalogItem[]> {
   const response = await fetch(CATALOG_URL, { cache: "no-cache" });
-  if (!response.ok)
-    throw new Error(
-      "Não foi possível carregar o catálogo de modelos oficiais.",
-    );
+  if (!response.ok) throw new Error("Não foi possível carregar o catálogo de modelos oficiais.");
   const data = (await response.json()) as OfficialTemplateCatalogItem[];
   return data.filter((item) => item.ativo && item.formato === "docx");
 }
 
-function processFor(
-  item: OfficialTemplateCatalogItem,
-): OfficialProcessKey | null {
+function processFor(item: OfficialTemplateCatalogItem): OfficialProcessKey | null {
   if (item.id === "identificacao-sala-velorio" || item.id === "condolencias") {
     return "sepultamento";
   }
   if (item.id === "ordem-sepultamento") return "sepultamento";
-  if (
-    item.id === "ordem-exumacao" ||
-    item.id === "guia-exumacao-semi-intacto"
-  ) {
+  if (item.id === "ordem-exumacao" || item.id === "guia-exumacao-semi-intacto") {
     return "exumacao";
   }
   if (item.id === "aquisicao-renovacao-ossuario") return "ossario";
@@ -68,10 +58,7 @@ function processFor(
 
 function variant(
   item: OfficialTemplateCatalogItem,
-  input: Omit<
-    OfficialTemplateInstallVariant,
-    "catalogId" | "placeholders" | "aliases"
-  >,
+  input: Omit<OfficialTemplateInstallVariant, "catalogId" | "placeholders" | "aliases">,
 ): OfficialTemplateInstallVariant {
   return {
     catalogId: item.id,
@@ -177,9 +164,7 @@ export function officialStoragePath(userId: string, storageId: string): string {
   return `${userId}/official/${storageId}.docx`;
 }
 
-export function getOfficialStorageId(
-  storagePath?: string | null,
-): string | null {
+export function getOfficialStorageId(storagePath?: string | null): string | null {
   if (!storagePath) return null;
   const match = storagePath.match(/\/official\/([^/]+)\.docx$/i);
   return match?.[1] ?? null;
@@ -219,38 +204,22 @@ export function isTemplateApplicable(
   if (!id) return true;
 
   if (id === "termo-compromisso-responsabilidade-sepultamento") {
-    return (
-      attendance.process === "sepultamento" &&
-      attendance.subprocess === "jazigo"
-    );
+    return attendance.process === "sepultamento" && attendance.subprocess === "jazigo";
   }
   if (id === "termo-compromisso-responsabilidade-exumacao") {
-    return (
-      attendance.process === "exumacao" && attendance.subprocess === "jazigo"
-    );
+    return attendance.process === "exumacao" && attendance.subprocess === "jazigo";
   }
   if (id === "ordem-sepultamento") {
-    return (
-      attendance.process === "sepultamento" &&
-      attendance.subprocess === "quadra_geral"
-    );
+    return attendance.process === "sepultamento" && attendance.subprocess === "quadra_geral";
   }
   if (id === "ordem-sepultamento-jazigo") {
-    return (
-      attendance.process === "sepultamento" &&
-      attendance.subprocess === "jazigo"
-    );
+    return attendance.process === "sepultamento" && attendance.subprocess === "jazigo";
   }
   if (id === "ordem-exumacao") {
-    return (
-      attendance.process === "exumacao" &&
-      attendance.subprocess === "quadra_geral"
-    );
+    return attendance.process === "exumacao" && attendance.subprocess === "quadra_geral";
   }
   if (id === "ordem-exumacao-jazigo") {
-    return (
-      attendance.process === "exumacao" && attendance.subprocess === "jazigo"
-    );
+    return attendance.process === "exumacao" && attendance.subprocess === "jazigo";
   }
   if (id === "aquisicao-renovacao-ossuario") {
     return (
@@ -259,9 +228,7 @@ export function isTemplateApplicable(
     );
   }
   if (id === "aquisicao-renovacao-ossuario-renovacao") {
-    return (
-      attendance.process === "ossario" && attendance.subprocess === "renovacao"
-    );
+    return attendance.process === "ossario" && attendance.subprocess === "renovacao";
   }
   if (id === "guia-exumacao-semi-intacto") {
     const values = [
@@ -271,9 +238,7 @@ export function isTemplateApplicable(
       attendance.extractedData?.situacao_exumacao,
       attendance.extractedData?.situacao,
     ].map(normalizedText);
-    return values.some(
-      (value) => value.includes("semi") && value.includes("intacto"),
-    );
+    return values.some((value) => value.includes("semi") && value.includes("intacto"));
   }
   if (id === "identificacao-sala-velorio" || id === "condolencias") {
     const values = [
@@ -283,8 +248,7 @@ export function isTemplateApplicable(
       attendance.extractedData?.salaVelorio,
     ];
     return (
-      attendance.process === "sepultamento" &&
-      values.some((value) => String(value ?? "").trim())
+      attendance.process === "sepultamento" && values.some((value) => String(value ?? "").trim())
     );
   }
 
@@ -423,18 +387,8 @@ const SYNONYMS: Record<string, string[]> = {
   nomeFalecido: ["nome_falecido", "nomeFal", "falecido"],
   nomeRequerente: ["nome_requerente", "nome_responsavel", "nomeResp"],
   cpfRequerente: ["cpf_requerente", "cpf_responsavel", "cpfResp"],
-  enderecoRequerente: [
-    "endereco_requerente",
-    "endereco_responsavel",
-    "endResp",
-    "endereco",
-  ],
-  telefoneRequerente: [
-    "telefone_requerente",
-    "telefone_responsavel",
-    "telResp",
-    "telefone",
-  ],
+  enderecoRequerente: ["endereco_requerente", "endereco_responsavel", "endResp", "endereco"],
+  telefoneRequerente: ["telefone_requerente", "telefone_responsavel", "telResp", "telefone"],
   inscricaoGS: ["inscricao_gs", "inscrGS", "numero_inscricao"],
   numeroDO: ["numero_do", "numDO"],
   dataSepultamento: ["data_sepultamento", "dataSep"],
@@ -448,10 +402,7 @@ const SYNONYMS: Record<string, string[]> = {
   telefoneConcessionario: ["telefone_concessionario", "telConc", "telefone"],
   blocoGaleria: ["bloco_galeria", "bloco"],
   numeroOssuario: ["numero_ossuario"],
-  dataAquisicaoRenovacao: [
-    "data_aquisicao_ossuario",
-    "data_renovacao_ossuario",
-  ],
+  dataAquisicaoRenovacao: ["data_aquisicao_ossuario", "data_renovacao_ossuario"],
   dataVencimento: ["data_vencimento_ossuario"],
   placaIdentificacao: ["placa_identificacao", "placa"],
   origemTranslado: ["origem_translado", "origem"],

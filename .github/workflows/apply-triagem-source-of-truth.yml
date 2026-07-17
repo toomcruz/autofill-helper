@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Format and validate focused files
+      - name: Format implementation
         run: |
           bunx prettier --write \
             src/lib/triagem-sepultamento.ts \
@@ -42,15 +42,6 @@ jobs:
             src/lib/vision/extract-attendance.functions.ts \
             src/lib/attendances.functions.ts \
             src/lib/__tests__/triagem-sepultamento.test.ts
-          bunx eslint \
-            src/lib/triagem-sepultamento.ts \
-            src/components/triagem-sepultamento.tsx \
-            'src/routes/_authed.atendimento.$id.tsx' \
-            src/lib/vision/extract-attendance.functions.ts \
-            src/lib/attendances.functions.ts \
-            src/lib/__tests__/triagem-sepultamento.test.ts
-          bun test src/lib/__tests__/triagem-sepultamento.test.ts
-          bun run typecheck
 
       - name: Commit implementation
         run: |
@@ -59,7 +50,23 @@ jobs:
           git add src
           if git diff --cached --quiet; then
             echo "No implementation changes."
-            exit 0
+          else
+            git commit -m "fix: usa triagem como fonte de verdade"
+            git push origin HEAD:fix/triagem-source-of-truth
           fi
-          git commit -m "fix: usa triagem como fonte de verdade"
-          git push origin HEAD:fix/triagem-source-of-truth
+
+      - name: Lint focused files
+        run: |
+          bunx eslint \
+            src/lib/triagem-sepultamento.ts \
+            src/components/triagem-sepultamento.tsx \
+            'src/routes/_authed.atendimento.$id.tsx' \
+            src/lib/vision/extract-attendance.functions.ts \
+            src/lib/attendances.functions.ts \
+            src/lib/__tests__/triagem-sepultamento.test.ts
+
+      - name: Triagem tests
+        run: bun test src/lib/__tests__/triagem-sepultamento.test.ts
+
+      - name: TypeScript
+        run: bun run typecheck

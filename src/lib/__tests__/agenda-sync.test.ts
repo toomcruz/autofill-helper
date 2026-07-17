@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  buildAgendaSyncPatch,
+  hasWake,
   resolveAgendaType,
   shouldCreateAgendaEvent,
-  buildAgendaSyncPatch,
 } from "@/lib/agenda-sync";
 import { getProcess } from "@/lib/processes";
 
@@ -26,21 +27,45 @@ describe("resolveAgendaType", () => {
   });
 });
 
+describe("hasWake", () => {
+  it("only accepts the explicit SIM choice", () => {
+    expect(hasWake({ tem_velorio: "SIM" })).toBe(true);
+    expect(hasWake({ tem_velorio: "NAO" })).toBe(false);
+    expect(hasWake({ sala_velorio: "A" })).toBe(false);
+    expect(hasWake({})).toBe(false);
+  });
+});
+
 describe("shouldCreateAgendaEvent", () => {
   it("does not create when there is no scheduled date (test 4)", () => {
-    expect(shouldCreateAgendaEvent("sepultamento", {})).toBe(false);
+    expect(shouldCreateAgendaEvent("sepultamento", { tem_velorio: "SIM" })).toBe(false);
     expect(
-      shouldCreateAgendaEvent("sepultamento", { data_agendada: "   " }),
+      shouldCreateAgendaEvent("sepultamento", {
+        data_agendada: "   ",
+        tem_velorio: "SIM",
+      }),
     ).toBe(false);
     expect(
       shouldCreateAgendaEvent("exumacao", { hora_agendamento: "10:00" }),
     ).toBe(false);
   });
 
-  it("keeps burial and wake events in the standalone agenda", () => {
+  it("does not create a wake event for a burial without wake", () => {
     expect(
-      shouldCreateAgendaEvent("sepultamento", { data_agendada: "2026-07-20" }),
+      shouldCreateAgendaEvent("sepultamento", {
+        data_agendada: "2026-07-20",
+        tem_velorio: "NAO",
+      }),
     ).toBe(false);
+  });
+
+  it("creates a linked event for wake plus burial", () => {
+    expect(
+      shouldCreateAgendaEvent("sepultamento", {
+        data_agendada: "2026-07-20",
+        tem_velorio: "SIM",
+      }),
+    ).toBe(true);
   });
 
   it("creates exhumation events when a date is provided", () => {
@@ -57,7 +82,7 @@ describe("shouldCreateAgendaEvent", () => {
 });
 
 describe("sepultamento process form", () => {
-  it("does not embed the operational agenda fields in new attendance", () => {
+  it("does not embed the operational agenda fields in generic extra fields", () => {
     const process = getProcess("sepultamento");
     expect(process?.extraFields ?? []).toEqual([]);
   });

@@ -7,14 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  FileDown,
-  FileText,
-  Loader2,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { getProcess } from "@/lib/processes";
 import { getErrorMessage } from "@/lib/error-message";
 import { extractAttendanceData, generateDocument, getSignedUrl } from "@/lib/attendances.functions";
@@ -31,6 +24,33 @@ import type { FieldConflict } from "@/lib/domain/vision/types";
 export const Route = createFileRoute("/_authed/atendimento/$id")({
   component: AttendanceDetail,
 });
+
+const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
+  draft: "Rascunho",
+  extracting: "Extraindo dados",
+  reviewing: "Em revisão",
+  done: "Concluído",
+  error: "Erro",
+};
+
+const SUBPROCESS_LABELS: Record<string, string> = {
+  jazigo: "Sepultamento em jazigo",
+  quadra_geral: "Sepultamento em quadra geral",
+};
+
+function buildPersistedExtractedData(
+  source: unknown,
+  fields: Record<string, string>,
+  meta: Record<string, FlatFieldMeta>,
+): Record<string, unknown> {
+  const preservedMetadata: Record<string, unknown> = {};
+  if (source && typeof source === "object") {
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (key.startsWith("_")) preservedMetadata[key] = value;
+    }
+  }
+  return { ...preservedMetadata, ...fields, _visionMeta: meta };
+}
 
 function AttendanceDetail() {
   const { id } = useParams({ from: "/_authed/atendimento/$id" });
@@ -354,10 +374,13 @@ function AttendanceDetail() {
           <div className="text-sm text-muted-foreground">
             {att.subprocess ? (
               <Badge variant="outline" className="mr-2">
-                {att.subprocess}
+                {SUBPROCESS_LABELS[att.subprocess] ?? att.subprocess.replace(/_/g, " ")}
               </Badge>
             ) : null}
-            Status: <span className="font-medium">{att.status}</span>
+            Status:{" "}
+            <span className="font-medium">
+              {ATTENDANCE_STATUS_LABELS[att.status] ?? att.status}
+            </span>
           </div>
         </div>
         <Button
@@ -436,7 +459,6 @@ function AttendanceDetail() {
               )}
             </CardContent>
           </Card>
-
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -540,7 +562,6 @@ function AttendanceDetail() {
     </div>
   );
 }
-
 
 function ImageThumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string>();

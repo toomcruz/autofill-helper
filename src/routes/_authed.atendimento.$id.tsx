@@ -5,18 +5,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  AlertTriangle,
   ArrowLeft,
-  ChevronDown,
   FileDown,
   FileText,
   Loader2,
-  Plus,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -27,9 +22,11 @@ import { extractAttendanceVision } from "@/lib/vision/extract-attendance.functio
 import { flattenVisionState } from "@/lib/vision/flatten-vision";
 import type { VisionState } from "@/lib/vision/attendance-vision-store";
 import type { FlatFieldMeta } from "@/lib/vision/flatten-vision";
-import { computeReviewSummary, type FieldStatus } from "@/lib/vision/review-status";
+import { computeReviewSummary } from "@/lib/vision/review-status";
 import { getCriticalFieldKeys } from "@/lib/domain/critical-fields";
 import { isTemplateApplicable } from "@/lib/official-templates";
+import { DocumentReview } from "@/components/document-review";
+import type { FieldConflict } from "@/lib/domain/vision/types";
 
 export const Route = createFileRoute("/_authed/atendimento/$id")({
   component: AttendanceDetail,
@@ -124,6 +121,28 @@ function AttendanceDetail() {
     return flattenVisionState(state).meta;
   }, [att?.extracted_data]);
 
+  // Conflitos originais do pipeline de visão para exibir opções ao usuário.
+  const visionConflicts = useMemo<FieldConflict[]>(() => {
+    const raw = att?.extracted_data as Record<string, unknown> | undefined;
+    const state = raw?._vision as VisionState | undefined;
+    return state?.conflicts ?? [];
+  }, [att?.extracted_data]);
+
+  // Confirmações locais de "usar valor atual" (baixa confiança → normal).
+  const [confirmedOverrides, setConfirmedOverrides] = useState<Set<string>>(new Set());
+
+  const effectiveMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
+    if (confirmedOverrides.size === 0) return fieldMeta;
+    const out: Record<string, FlatFieldMeta> = { ...fieldMeta };
+    for (const key of confirmedOverrides) {
+      const base = out[key];
+      out[key] = base
+        ? { ...base, confirmedByUser: true, confidence: 1 }
+        : { key, value: fields[key] ?? "", confidence: 1, confirmedByUser: true };
+    }
+    return out;
+  }, [fieldMeta, confirmedOverrides, fields]);
+
   const applicableTemplates = useMemo(() => {
     if (!att) return [];
     return (templates ?? []).filter((template) =>
@@ -157,7 +176,7 @@ function AttendanceDetail() {
       computeReviewSummary({
         keys: allFields,
         fields,
-        meta: fieldMeta,
+        meta: effectiveMeta,
         criticalKeys,
       }),
     [allFields, fields, fieldMeta, criticalKeys],
@@ -346,45 +365,38 @@ function AttendanceDetail() {
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
-                <CardTitle>Dados extraídos</CardTitle>
-                <CardDescription>Revise e corrija antes de gerar os documentos.</CardDescription>
+                <CardTitle>Revisão do documento</CardTitle>
+                <CardDescription>
+                  Confirme apenas o que estiver em destaque — o restante já foi conferido.
+                </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => triggerExtract(false)}
-                disabled={extracting}
-                className="gap-2"
-              >
-                {extracting ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3" />
-                )}
-                Re-extrair
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => triggerExtract(false)}
+                  disabled={extracting}
+                  className="gap-2"
+                >
+                  {extracting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  Re-extrair
+                </Button>
+                <Button size="sm" onClick={saveFields} disabled={saving}>
+                  {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />} Salvar revisão
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               {extracting && !Object.keys(fields).length && (
                 <div className="text-sm text-muted-foreground flex items-center gap-2 py-4">
                   <Loader2 className="h-4 w-4 animate-spin" /> Analisando imagens com IA…
                 </div>
               )}
-              {reviewSummary.pendingCount > 0 && (
-                <div className="text-sm rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  {reviewSummary.pendingCount === 1
-                    ? "1 informação precisa de revisão"
-                    : `${reviewSummary.pendingCount} informações precisam de revisão`}
-                  {reviewSummary.blockingKeys.length > 0 && (
-                    <span className="text-destructive font-medium ml-1">
-                      ({reviewSummary.blockingKeys.length} crítica
-                      {reviewSummary.blockingKeys.length > 1 ? "s" : ""})
-                    </span>
-                  )}
-                </div>
-              )}
-              {allFields.length === 0 && !extracting && (
+              {allFields.length === 0 && !extracting ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com
                   placeholders {"{campo}"} em{" "}
@@ -393,47 +405,28 @@ function AttendanceDetail() {
                   </a>
                   , depois clique em Re-extrair.
                 </p>
+              ) : (
+                <DocumentReview
+                  keys={allFields}
+                  fields={fields}
+                  meta={effectiveMeta}
+                  statuses={reviewSummary.statuses}
+                  summary={reviewSummary}
+                  conflicts={visionConflicts}
+                  criticalKeys={criticalKeys}
+                  onFieldsChange={setFields}
+                  onConfirmField={(key) =>
+                    setConfirmedOverrides((prev) => {
+                      const next = new Set(prev);
+                      next.add(key);
+                      return next;
+                    })
+                  }
+                />
               )}
-              <div className="grid sm:grid-cols-2 gap-3">
-                {allFields.map((key) => {
-                  const m = fieldMeta[key];
-                  const status: FieldStatus = reviewSummary.statuses[key] ?? "normal";
-                  const inputClass =
-                    status === "conflito" || status === "nao_encontrado"
-                      ? "border-destructive"
-                      : status === "revisar"
-                        ? "border-amber-500/60"
-                        : undefined;
-                  return (
-                    <FieldRow
-                      key={key}
-                      fieldKey={key}
-                      value={fields[key] ?? ""}
-                      status={status}
-                      meta={m}
-                      inputClass={inputClass}
-                      onChange={(value) => setFields({ ...fields, [key]: value })}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const fieldName = prompt("Nome do campo (ex: nome_falecido)");
-                    if (fieldName) setFields({ ...fields, [fieldName.trim()]: "" });
-                  }}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar campo
-                </Button>
-                <Button size="sm" onClick={saveFields} disabled={saving}>
-                  {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />} Salvar
-                </Button>
-              </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -538,71 +531,6 @@ function AttendanceDetail() {
   );
 }
 
-interface FieldRowProps {
-  fieldKey: string;
-  value: string;
-  status: FieldStatus;
-  meta: FlatFieldMeta | undefined;
-  inputClass: string | undefined;
-  onChange: (value: string) => void;
-}
-
-function FieldRow({ fieldKey, value, status, meta, inputClass, onChange }: FieldRowProps) {
-  const [showDetails, setShowDetails] = useState(false);
-  const hasPending = status !== "normal";
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Label htmlFor={fieldKey} className="text-xs">
-          {fieldKey}
-        </Label>
-        {status === "conflito" && (
-          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
-            <AlertTriangle className="h-2.5 w-2.5" /> conflito
-          </Badge>
-        )}
-        {status === "nao_encontrado" && (
-          <Badge variant="destructive" className="h-4 text-[10px] gap-1">
-            <AlertTriangle className="h-2.5 w-2.5" /> não encontrado
-          </Badge>
-        )}
-        {status === "revisar" && (
-          <Badge variant="outline" className="h-4 text-[10px] border-amber-500 text-amber-600">
-            revisar
-          </Badge>
-        )}
-      </div>
-      <Input
-        id={fieldKey}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={inputClass}
-      />
-      {hasPending && meta && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowDetails((v) => !v)}
-            className="text-[10px] text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"
-          >
-            <ChevronDown
-              className={`h-3 w-3 transition-transform ${showDetails ? "rotate-180" : ""}`}
-            />
-            Ver detalhes
-          </button>
-          {showDetails && (
-            <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5 pl-4">
-              <div>Confiança: {(meta.confidence * 100).toFixed(0)}%</div>
-              {meta.source && <div>Origem: {String(meta.source).replace(/_/g, " ")}</div>}
-              {meta.sourceImageId && <div>Imagem: {meta.sourceImageId}</div>}
-              {meta.confirmedByUser && <div>Confirmado pelo usuário</div>}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ImageThumb({ path }: { path: string }) {
   const [url, setUrl] = useState<string>();

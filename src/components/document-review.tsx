@@ -393,6 +393,7 @@ function GroupRow({
   const blank = isReviewBlankValue(value);
 
   if (status === "normal" && !blank && !editing) {
+
     return (
       <div id={anchorId} className="scroll-mt-24 rounded-lg border px-3 py-2">
         <div className="flex items-start justify-between gap-3">

@@ -137,6 +137,22 @@ function AttendanceDetail() {
     return Array.from(fieldsSet).sort();
   }, [fields, applicableTemplates]);
 
+  const criticalKeys = useMemo(
+    () => getCriticalFieldKeys(applicableTemplates),
+    [applicableTemplates],
+  );
+
+  const reviewSummary = useMemo(
+    () =>
+      computeReviewSummary({
+        keys: allFields,
+        fields,
+        meta: fieldMeta,
+        criticalKeys,
+      }),
+    [allFields, fields, fieldMeta, criticalKeys],
+  );
+
   async function triggerExtract(autoGenerate = false) {
     setExtracting(true);
     try {

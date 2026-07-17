@@ -31,11 +31,15 @@ jobs:
             .github/workflows/validate.yml \
             src/lib/docx.server.ts \
             src/lib/__tests__/docx.test.ts \
+            src/lib/__tests__/navigation-recovery.test.ts \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \
+            src/lib/navigation-recovery.ts \
             src/lib/official-templates.ts \
             src/lib/processes.ts \
+            src/router.tsx \
+            src/routes/__root.tsx \
             'src/routes/_authed.agenda.tsx' \
             'src/routes/_authed.atendimento.$id.tsx' \
             src/routes/_authed.atendimento.novo.tsx \
@@ -120,11 +124,15 @@ jobs:
           bunx eslint \
             src/lib/docx.server.ts \
             src/lib/__tests__/docx.test.ts \
+            src/lib/__tests__/navigation-recovery.test.ts \
             src/lib/agenda.ts \
             src/lib/attendances.functions.ts \
             src/lib/error-message.ts \
+            src/lib/navigation-recovery.ts \
             src/lib/official-templates.ts \
             src/lib/processes.ts \
+            src/router.tsx \
+            src/routes/__root.tsx \
             'src/routes/_authed.agenda.tsx' \
             'src/routes/_authed.atendimento.$id.tsx' \
             src/routes/_authed.atendimento.novo.tsx \

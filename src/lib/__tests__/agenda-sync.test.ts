@@ -4,6 +4,7 @@ import {
   shouldCreateAgendaEvent,
   buildAgendaSyncPatch,
 } from "@/lib/agenda-sync";
+import { getProcess } from "@/lib/processes";
 
 describe("resolveAgendaType", () => {
   it("returns velorio_sepultamento for sepultamento (test 1)", () => {
@@ -32,13 +33,23 @@ describe("shouldCreateAgendaEvent", () => {
     expect(shouldCreateAgendaEvent("exumacao", { hora_agendamento: "10:00" })).toBe(false);
   });
 
-  it("creates when a date is provided for scheduled processes", () => {
-    expect(shouldCreateAgendaEvent("sepultamento", { data_agendada: "2026-07-20" })).toBe(true);
+  it("keeps burial and wake events in the standalone agenda", () => {
+    expect(shouldCreateAgendaEvent("sepultamento", { data_agendada: "2026-07-20" })).toBe(false);
+  });
+
+  it("creates exhumation events when a date is provided", () => {
     expect(shouldCreateAgendaEvent("exumacao", { data_agendada: "2026-07-20" })).toBe(true);
   });
 
   it("never creates for unrelated processes", () => {
     expect(shouldCreateAgendaEvent("translado", { data_agendada: "2026-07-20" })).toBe(false);
+  });
+});
+
+describe("sepultamento process form", () => {
+  it("does not embed the operational agenda fields in new attendance", () => {
+    const process = getProcess("sepultamento");
+    expect(process?.extraFields ?? []).toEqual([]);
   });
 });
 

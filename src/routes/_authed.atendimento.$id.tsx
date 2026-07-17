@@ -112,20 +112,30 @@ function AttendanceDetail() {
 
   // Metadados de confiança/conflito derivados do estado de visão salvo.
   const fieldMeta = useMemo<Record<string, FlatFieldMeta>>(() => {
-    const raw = att?.extracted_data as Record<string, unknown> | undefined;
-    if (!raw) return {};
-    const savedMeta = raw._visionMeta as Record<string, FlatFieldMeta> | undefined;
-    if (savedMeta) return savedMeta;
-    const state = raw._vision as VisionState | undefined;
-    if (!state) return {};
-    return flattenVisionState(state).meta;
+    try {
+      const raw = att?.extracted_data as Record<string, unknown> | undefined;
+      if (!raw || typeof raw !== "object") return {};
+      const savedMeta = raw._visionMeta as Record<string, FlatFieldMeta> | undefined;
+      if (savedMeta && typeof savedMeta === "object") return savedMeta;
+      const state = raw._vision as VisionState | undefined;
+      if (!state || typeof state !== "object") return {};
+      return flattenVisionState(state).meta;
+    } catch (err) {
+      console.error("[atendimento] fieldMeta derivation failed:", err);
+      return {};
+    }
   }, [att?.extracted_data]);
 
   // Conflitos originais do pipeline de visão para exibir opções ao usuário.
   const visionConflicts = useMemo<FieldConflict[]>(() => {
-    const raw = att?.extracted_data as Record<string, unknown> | undefined;
-    const state = raw?._vision as VisionState | undefined;
-    return state?.conflicts ?? [];
+    try {
+      const raw = att?.extracted_data as Record<string, unknown> | undefined;
+      const state = raw?._vision as VisionState | undefined;
+      const list = state?.conflicts;
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
   }, [att?.extracted_data]);
 
   // Confirmações locais de "usar valor atual" (baixa confiança → normal).

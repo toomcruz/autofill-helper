@@ -1,33 +1,38 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet,
+  HeadContent,
   Link,
+  Outlet,
+  Scripts,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import {
+  navigationErrorMessage,
+  registerVitePreloadRecovery,
+  reloadForDynamicImportError,
+} from "../lib/navigation-recovery";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          Esta página não existe ou foi movida.
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            Ir para o início
           </Link>
         </div>
       </div>
@@ -35,39 +40,71 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const { queryClient } = Route.useRouteContext();
+  const [retrying, setRetrying] = useState(false);
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reloadForDynamicImportError(error);
   }, [error]);
+
+  async function retryNavigation() {
+    if (retrying) return;
+    setRetrying(true);
+
+    try {
+      await queryClient.cancelQueries();
+      await queryClient.resetQueries({}, { throwOnError: false });
+      await router.invalidate({ sync: true, forcePending: true });
+    } catch (retryError) {
+      console.error("[navigation] Falha ao tentar recuperar a rota", retryError);
+      window.location.reload();
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Esta página não carregou
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          A conexão ou uma atualização do sistema pode ter interrompido a navegação.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            type="button"
+            onClick={retryNavigation}
+            disabled={retrying}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Try again
+            {retrying ? "Tentando novamente…" : "Tentar novamente"}
           </button>
-          <a
-            href="/"
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            Recarregar página
+          </button>
+          <a
+            href="/dashboard"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Voltar aos atendimentos
           </a>
         </div>
+        <details className="mt-5 text-left text-xs text-muted-foreground">
+          <summary className="cursor-pointer text-center">Detalhes técnicos</summary>
+          <code className="mt-2 block max-h-28 overflow-auto rounded-md bg-muted p-2 break-words">
+            {navigationErrorMessage(error) || "Erro de navegação sem mensagem"}
+          </code>
+        </details>
       </div>
     </div>
   );
@@ -93,9 +130,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Apoio ao Atendimento" },
-      { name: "twitter:description", content: "Sistema de apoio ao atendimento: extrai dados de fotos e prints e preenche documentos automaticamente." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029" },
+      {
+        name: "twitter:description",
+        content:
+          "Sistema de apoio ao atendimento: extrai dados de fotos e prints e preenche documentos automaticamente.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a44be66a-7e91-49fc-a9ed-152f5aca7029",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -118,7 +167,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
@@ -132,6 +181,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => registerVitePreloadRecovery(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

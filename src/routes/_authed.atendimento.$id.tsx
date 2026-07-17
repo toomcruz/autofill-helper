@@ -343,45 +343,38 @@ function AttendanceDetail() {
           <Card>
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
-                <CardTitle>Dados extraídos</CardTitle>
-                <CardDescription>Revise e corrija antes de gerar os documentos.</CardDescription>
+                <CardTitle>Revisão do documento</CardTitle>
+                <CardDescription>
+                  Confirme apenas o que estiver em destaque — o restante já foi conferido.
+                </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => triggerExtract(false)}
-                disabled={extracting}
-                className="gap-2"
-              >
-                {extracting ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3" />
-                )}
-                Re-extrair
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => triggerExtract(false)}
+                  disabled={extracting}
+                  className="gap-2"
+                >
+                  {extracting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  Re-extrair
+                </Button>
+                <Button size="sm" onClick={saveFields} disabled={saving}>
+                  {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />} Salvar revisão
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               {extracting && !Object.keys(fields).length && (
                 <div className="text-sm text-muted-foreground flex items-center gap-2 py-4">
                   <Loader2 className="h-4 w-4 animate-spin" /> Analisando imagens com IA…
                 </div>
               )}
-              {reviewSummary.pendingCount > 0 && (
-                <div className="text-sm rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  {reviewSummary.pendingCount === 1
-                    ? "1 informação precisa de revisão"
-                    : `${reviewSummary.pendingCount} informações precisam de revisão`}
-                  {reviewSummary.blockingKeys.length > 0 && (
-                    <span className="text-destructive font-medium ml-1">
-                      ({reviewSummary.blockingKeys.length} crítica
-                      {reviewSummary.blockingKeys.length > 1 ? "s" : ""})
-                    </span>
-                  )}
-                </div>
-              )}
-              {allFields.length === 0 && !extracting && (
+              {allFields.length === 0 && !extracting ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum dado ainda. Instale os modelos oficiais ou adicione modelos com
                   placeholders {"{campo}"} em{" "}
@@ -390,47 +383,28 @@ function AttendanceDetail() {
                   </a>
                   , depois clique em Re-extrair.
                 </p>
+              ) : (
+                <DocumentReview
+                  keys={allFields}
+                  fields={fields}
+                  meta={effectiveMeta}
+                  statuses={reviewSummary.statuses}
+                  summary={reviewSummary}
+                  conflicts={visionConflicts}
+                  criticalKeys={criticalKeys}
+                  onFieldsChange={setFields}
+                  onConfirmField={(key) =>
+                    setConfirmedOverrides((prev) => {
+                      const next = new Set(prev);
+                      next.add(key);
+                      return next;
+                    })
+                  }
+                />
               )}
-              <div className="grid sm:grid-cols-2 gap-3">
-                {allFields.map((key) => {
-                  const m = fieldMeta[key];
-                  const status: FieldStatus = reviewSummary.statuses[key] ?? "normal";
-                  const inputClass =
-                    status === "conflito" || status === "nao_encontrado"
-                      ? "border-destructive"
-                      : status === "revisar"
-                        ? "border-amber-500/60"
-                        : undefined;
-                  return (
-                    <FieldRow
-                      key={key}
-                      fieldKey={key}
-                      value={fields[key] ?? ""}
-                      status={status}
-                      meta={m}
-                      inputClass={inputClass}
-                      onChange={(value) => setFields({ ...fields, [key]: value })}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const fieldName = prompt("Nome do campo (ex: nome_falecido)");
-                    if (fieldName) setFields({ ...fields, [fieldName.trim()]: "" });
-                  }}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar campo
-                </Button>
-                <Button size="sm" onClick={saveFields} disabled={saving}>
-                  {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />} Salvar
-                </Button>
-              </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">

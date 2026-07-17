@@ -9,12 +9,7 @@
 import type { FlatFieldMeta } from "./flatten-vision";
 import { groupFields, isBlankValue } from "./field-presentation";
 
-export type FieldStatus =
-  | "normal"
-  | "revisar"
-  | "conflito"
-  | "nao_encontrado"
-  | "opcional_vazio";
+export type FieldStatus = "normal" | "revisar" | "conflito" | "nao_encontrado" | "opcional_vazio";
 
 const CONFIDENCE_THRESHOLD = 0.9;
 
@@ -27,13 +22,9 @@ export function isReviewBlankValue(value: unknown): boolean {
     .toLocaleLowerCase("pt-BR")
     .replace(/\s+/g, " ")
     .trim();
-  return [
-    "nao informado",
-    "informacao pendente",
-    "n/a",
-    "na",
-    "nao se aplica",
-  ].includes(normalized);
+  return ["nao informado", "informacao pendente", "n/a", "na", "nao se aplica"].includes(
+    normalized,
+  );
 }
 
 export interface ComputeFieldStatusInput {

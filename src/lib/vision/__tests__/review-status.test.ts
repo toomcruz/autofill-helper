@@ -50,9 +50,9 @@ describe("computeFieldStatus", () => {
   });
 
   it("trata textos de placeholder como ausência real", () => {
-    expect(
-      computeFieldStatus({ value: "Não informado", meta: undefined, isCritical: true }),
-    ).toBe("nao_encontrado");
+    expect(computeFieldStatus({ value: "Não informado", meta: undefined, isCritical: true })).toBe(
+      "nao_encontrado",
+    );
     expect(
       computeFieldStatus({ value: "Informação pendente", meta: undefined, isCritical: false }),
     ).toBe("opcional_vazio");

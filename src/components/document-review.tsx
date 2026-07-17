@@ -3,21 +3,8 @@
  * Aliases técnicos são agrupados e campos opcionais vazios ficam ocultos.
  */
 import { useMemo, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  Pencil,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Pencil } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -174,8 +161,7 @@ export function DocumentReview({
     return { criticas, divergencias, conferir, resolvidas, total, pendentes };
   }, [visibleSections, statuses, criticalKeys, fields]);
 
-  const progress =
-    counts.total === 0 ? 100 : Math.round((counts.resolvidas / counts.total) * 100);
+  const progress = counts.total === 0 ? 100 : Math.round((counts.resolvidas / counts.total) * 100);
 
   function scrollToGroup(group: PresentationGroup) {
     const el = containerRef.current?.querySelector<HTMLElement>(`#${groupAnchorId(group)}`);
@@ -209,11 +195,7 @@ export function DocumentReview({
           <CardContent className="space-y-3 text-sm">
             <div className="space-y-1.5">
               <SummaryLine color="destructive" label="Críticas" value={counts.criticas} />
-              <SummaryLine
-                color="destructive"
-                label="Divergências"
-                value={counts.divergencias}
-              />
+              <SummaryLine color="destructive" label="Divergências" value={counts.divergencias} />
               <SummaryLine color="amber" label="Conferir" value={counts.conferir} />
               <SummaryLine color="emerald" label="Resolvidas" value={counts.resolvidas} />
             </div>
@@ -375,10 +357,7 @@ function StatusPill({ status, compact }: { status: GroupStatus; compact?: boolea
       ? "bg-destructive/5 text-destructive border-destructive/40"
       : "bg-amber-500/10 text-amber-700 border-amber-500/40 dark:text-amber-300";
   return (
-    <Badge
-      variant="outline"
-      className={cn("gap-1", cls, compact && "h-5 px-1.5 text-[10px]")}
-    >
+    <Badge variant="outline" className={cn("gap-1", cls, compact && "h-5 px-1.5 text-[10px]")}>
       <AlertTriangle className={cn(compact ? "h-2.5 w-2.5" : "h-3 w-3")} />
       {STATUS_LABEL[status]}
     </Badge>

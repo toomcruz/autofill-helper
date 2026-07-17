@@ -4,7 +4,7 @@
  * A avaliação acontece por conceito apresentado ao usuário, não por alias
  * técnico isolado. Assim, se `cpfResp` estiver preenchido e
  * `cpf_responsavel` vazio, o grupo continua resolvido em vez de criar uma
- * pendência duplicada.
+ * pendência duplicada. A contagem também considera cada conceito uma só vez.
  */
 import type { FlatFieldMeta } from "./flatten-vision";
 import { groupFields, isBlankValue } from "./field-presentation";

@@ -151,7 +151,14 @@ export function detectPlaceholders(docxBuffer: ArrayBuffer): string[] {
 export function fillDocx(docxBuffer: ArrayBuffer, data: Record<string, string>): Uint8Array {
   const zip = new PizZip(docxBuffer);
   try {
-    removeTinyInkArtifacts(zip);
+    // Fidelity-first: do NOT sanitize/normalize the official template binary.
+    // Any XML mutation risks breaking tipografia (rPr/pPr) e layout do modelo.
+    // Só limpa artefatos residuais de anotações Ink do Word quando o modelo os
+    // contiver — caso contrário a etapa é totalmente pulada.
+    const documentXml = zip.file(DOCUMENT_XML_PATH)?.asText() ?? "";
+    if (documentXml.includes("<w14:contentPart")) {
+      removeTinyInkArtifacts(zip);
+    }
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,

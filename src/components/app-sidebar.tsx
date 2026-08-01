@@ -1,5 +1,13 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, FileStack, FileText, LayoutDashboard, LogOut, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  FilePlus2,
+  FileStack,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Plus,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -19,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
   { title: "Atendimentos", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Documentos", url: "/documentos/novo", icon: FilePlus2 },
   { title: "Agenda", url: "/agenda", icon: CalendarDays },
   { title: "Modelos", url: "/modelos", icon: FileStack },
 ] as const;
@@ -59,11 +68,21 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupContent className="pt-2">
-            <Link to="/atendimento/novo" className="block px-2">
+          <SidebarGroupContent className="space-y-2 pt-2">
+            <Link to="/documentos/novo" className="block px-2">
               <Button
                 size="sm"
                 className="w-full gap-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:p-0"
+              >
+                <FilePlus2 className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>Novo documento</span>}
+              </Button>
+            </Link>
+            <Link to="/atendimento/novo" className="block px-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:p-0"
               >
                 <Plus className="h-4 w-4 shrink-0" />
                 {!collapsed && <span>Novo atendimento</span>}
